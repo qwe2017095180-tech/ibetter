@@ -160,7 +160,10 @@ class UpdateConfig {
   });
 
   /// Baked-in defaults via `--dart-define=UPDATE_REPO=owner/repo` at build time.
-  static const String defaultRepo = String.fromEnvironment('UPDATE_REPO', defaultValue: '');
+  static const String defaultRepo = String.fromEnvironment(
+    'UPDATE_REPO',
+    defaultValue: 'qwe2017095180-tech/ibetter',
+  );
   static const String defaultMirrorPrefix =
       String.fromEnvironment('UPDATE_MIRROR', defaultValue: '');
 
