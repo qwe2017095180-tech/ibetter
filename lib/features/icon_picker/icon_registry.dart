@@ -1,5 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../app/theme/app_colors.dart';
+import 'icon_catalog.g.dart';
+
 /// ===== Contract (WP7 owns the implementation, keep this public API stable) =====
 ///
 /// Icon keys look like `<categoryKey>/<name>`, e.g. `achievement/trophy`.
@@ -25,22 +28,32 @@ abstract final class IconRegistry {
   /// Default icon for new habits.
   static const defaultKey = 'study/book';
 
-  /// STUB data — WP7 replaces with the real asset catalog.
-  static const List<IconCategory> categories = [
-    IconCategory(key: 'achievement', title: '追求成就', iconKeys: ['achievement/star', 'achievement/trophy']),
-    IconCategory(key: 'study', title: '爱学习', iconKeys: ['study/book']),
-  ];
+  /// Catalog generated from `assets/icons/<category>/*.png`.
+  static const List<IconCategory> categories = iconCatalogCategories;
 
-  static const Map<String, IconData> _stubIcons = {
-    'achievement/star': Icons.star_rounded,
-    'achievement/trophy': Icons.emoji_events_rounded,
-    'study/book': Icons.menu_book_rounded,
-  };
+  /// Resolves [key] to a known catalog key, falling back to [fallbackKey].
+  static String resolveKey(String key) => iconCatalogKeys.contains(key) ? key : fallbackKey;
 
   /// Renders the icon for [key] at [size]. Must never throw.
   static Widget build(String key, {double size = 48}) {
-    final data = _stubIcons[key] ?? _stubIcons[fallbackKey]!;
-    return Icon(data, size: size, color: const Color(0xFF3B87D6));
+    final resolved = resolveKey(key);
+    return _buildAsset(resolved, size: size, allowFallbackAsset: resolved != fallbackKey);
+  }
+
+  static Widget _buildAsset(String key, {required double size, required bool allowFallbackAsset}) {
+    return Image.asset(
+      'assets/icons/$key.png',
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.medium,
+      errorBuilder: (_, _, _) {
+        if (allowFallbackAsset) {
+          return _buildAsset(fallbackKey, size: size, allowFallbackAsset: false);
+        }
+        return Icon(Icons.star_rounded, size: size, color: AppColors.primary);
+      },
+    );
   }
 }
 
@@ -52,5 +65,6 @@ class HabitIcon extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) => SizedBox.square(dimension: size, child: IconRegistry.build(iconKey, size: size));
+  Widget build(BuildContext context) =>
+      SizedBox.square(dimension: size, child: IconRegistry.build(iconKey, size: size));
 }

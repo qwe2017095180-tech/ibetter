@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/models/habit.dart';
 import '../../domain/models/reminder.dart';
+import 'local_notification_service.dart';
 
 /// ===== Contract (WP8 owns the implementation, keep this public API stable) =====
 abstract class NotificationService {
@@ -36,4 +37,4 @@ class NoopNotificationService implements NotificationService {
   Future<void> resyncAll(List<Habit> habits, List<Reminder> reminders) async {}
 }
 
-final notificationServiceProvider = Provider<NotificationService>((ref) => NoopNotificationService());
+final notificationServiceProvider = Provider<NotificationService>((ref) => LocalNotificationService());

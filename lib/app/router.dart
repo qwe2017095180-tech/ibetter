@@ -24,11 +24,10 @@ abstract final class Routes {
   static String editHabit(int id) => '/editor/$id';
 }
 
-final _rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
-
 final routerProvider = Provider<GoRouter>((ref) {
+  final rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
   return GoRouter(
-    navigatorKey: _rootKey,
+    navigatorKey: rootKey,
     initialLocation: Routes.today,
     routes: [
       StatefulShellRoute.indexedStack(
@@ -52,12 +51,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(
-        parentNavigatorKey: _rootKey,
+        parentNavigatorKey: rootKey,
         path: Routes.editor,
         builder: (_, _) => const ProjectEditorPage(),
         routes: [
           GoRoute(
-            parentNavigatorKey: _rootKey,
+            parentNavigatorKey: rootKey,
             path: ':id',
             builder: (_, state) =>
                 ProjectEditorPage(habitId: int.tryParse(state.pathParameters['id'] ?? '')),
