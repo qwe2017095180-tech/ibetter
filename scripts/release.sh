@@ -41,15 +41,16 @@ NEXT_BUILD=$((CURRENT_BUILD + 1))
 sed -i '' -E "s/^version:.*/version: ${NEW_VER}+${NEXT_BUILD}/" pubspec.yaml
 echo "Bumped pubspec.yaml -> ${NEW_VER}+${NEXT_BUILD} (repo: ${REPO})"
 
-# Build Release APK with baked-in UPDATE_REPO (optional UPDATE_MIRROR).
+# Build compact arm64-v8a Release APK with baked-in UPDATE_REPO (optional UPDATE_MIRROR).
 DART_DEFINES=(--dart-define="UPDATE_REPO=${REPO}")
 if [ -n "${UPDATE_MIRROR:-}" ]; then
   DART_DEFINES+=(--dart-define="UPDATE_MIRROR=${UPDATE_MIRROR}")
 fi
 
-flutter build apk --release "${DART_DEFINES[@]}"
+flutter build apk --release --target-platform android-arm64 "${DART_DEFINES[@]}"
 APK_SRC="build/app/outputs/flutter-apk/app-release.apk"
-APK_OUT="build/app/outputs/flutter-apk/ibetter-v${NEW_VER}.apk"
+APK_NAME="ibetter-v${NEW_VER}-arm64.apk"
+APK_OUT="build/app/outputs/flutter-apk/${APK_NAME}"
 cp "$APK_SRC" "$APK_OUT"
 
 git add pubspec.yaml
@@ -57,9 +58,17 @@ git commit -m "chore(release): v${NEW_VER}+${NEXT_BUILD}" || true
 git tag -f "v${NEW_VER}"
 git push origin HEAD --tags
 
-gh release create "v${NEW_VER}" "$APK_OUT" \
+gh release create "v${NEW_VER}" \
   --repo "$REPO" \
   --title "iBetter v${NEW_VER}" \
   --notes "$NOTES"
+
+TOKEN="$(gh auth token)"
+REL_ID="$(gh api "repos/${REPO}/releases/tags/v${NEW_VER}" --jq .id)"
+curl --http1.1 -fSL \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/vnd.android.package-archive" \
+  --data-binary @"${APK_OUT}" \
+  "https://uploads.github.com/repos/${REPO}/releases/${REL_ID}/assets?name=${APK_NAME}" >/dev/null
 
 echo "Released v${NEW_VER} to https://github.com/${REPO}/releases/tag/v${NEW_VER}"
