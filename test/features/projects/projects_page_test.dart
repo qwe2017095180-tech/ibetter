@@ -58,6 +58,15 @@ void main() {
           builder: (_, _) => const ProjectsPage(),
         ),
         GoRoute(
+          path: '/projects/:id',
+          builder: (_, state) {
+            pushedRoutes.add(state.uri.toString());
+            return Scaffold(
+              body: Center(child: Text('Detail ${state.pathParameters['id']}')),
+            );
+          },
+        ),
+        GoRoute(
           path: Routes.editor,
           builder: (_, state) {
             pushedRoutes.add(state.uri.toString());
@@ -278,12 +287,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Tap card navigates to edit route.
+    // Tap card navigates to project detail route.
     await tester.tap(find.byKey(ValueKey('project-card-$id')));
     await tester.pumpAndSettle();
-    expect(env.pushedRoutes, [Routes.editHabit(id)]);
+    expect(env.pushedRoutes, [Routes.projectDetail(id)]);
 
-    GoRouter.of(tester.element(find.text('Editor $id'))).pop();
+    GoRouter.of(tester.element(find.text('Detail $id'))).pop();
     await tester.pumpAndSettle();
 
     // Long-press -> 编辑 navigates to edit route.
@@ -294,7 +303,7 @@ void main() {
 
     await tester.tap(find.text('编辑'));
     await tester.pumpAndSettle();
-    expect(env.pushedRoutes, [Routes.editHabit(id), Routes.editHabit(id)]);
+    expect(env.pushedRoutes, [Routes.projectDetail(id), Routes.editHabit(id)]);
 
     GoRouter.of(tester.element(find.text('Editor $id'))).pop();
     await tester.pumpAndSettle();

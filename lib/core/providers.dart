@@ -5,6 +5,7 @@ import '../data/repositories/repositories.dart';
 import '../domain/date_key.dart' as dk;
 import '../domain/models/check_in.dart';
 import '../domain/models/habit.dart';
+import '../domain/services/achievement_service.dart';
 import '../domain/services/schedule_service.dart';
 import '../domain/services/stats_service.dart';
 import '../domain/services/streak_service.dart';
@@ -28,6 +29,7 @@ final reminderRepositoryProvider =
 final scheduleServiceProvider = Provider((ref) => const ScheduleService());
 final streakServiceProvider = Provider((ref) => const StreakService());
 final statsServiceProvider = Provider((ref) => const StatsService());
+final achievementServiceProvider = Provider((ref) => const AchievementService());
 
 /// Current local date. Override in tests.
 final todayProvider = Provider<DateTime>((ref) => dk.today());

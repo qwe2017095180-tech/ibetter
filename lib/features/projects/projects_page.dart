@@ -57,7 +57,7 @@ class ProjectsPage extends ConsumerWidget {
               return ProjectCard(
                 key: ValueKey('project-card-${habit.id}'),
                 habit: habit,
-                onTap: () => context.push(Routes.editHabit(habit.id)),
+                onTap: () => context.push(Routes.projectDetail(habit.id)),
                 onLongPress: () => _handleCardLongPress(context, ref, habit),
               );
             },

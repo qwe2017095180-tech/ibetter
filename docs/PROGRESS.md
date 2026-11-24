@@ -51,3 +51,11 @@ Flutter binary: `export PATH="$HOME/development/flutter/bin:$PATH"`
 - Added end-to-end integration tests in `test/integration/app_e2e_test.dart` covering the full MVP acceptance checklist (create daily habit → today & yesterday check-in → project stats & streak → pause hides from Home & cancels notifications → future start-date guard → 5-tab navigation → file-backed SQLite reopen persistence).
 - Updated `README.md` with run/test/packaging instructions.
 
+## Phase 2 Additions (Project Detail Stats, Today All-Done Badge, Achievements) — done
+- Domain: `lib/domain/services/achievement_service.dart` (`OverallStats`, `WeeklyRecord`, `AchievementItem`, 10 unlockable achievements) + `test/domain/achievement_service_test.dart`.
+- Shell: `lib/app/router.dart` added `/projects/:id` (`Routes.projectDetail`), wired `AchievementsPage`, and upgraded the Today tab badge to show a green checkmark circle when all scheduled habits for today are done.
+- Project Detail & Stats: `lib/features/projects/project_detail_page.dart` + `widgets/detail_{stats_tabs,monthly_calendar,yearly_stats,bottom_actions}.dart` (monthly interactive blue calendar, yearly 12-month heatmap + completion rate, bottom Edit & Share dialog with copyable text) + `test/features/projects/project_detail_page_test.dart`.
+- Achievements (`我的成就`): `lib/features/achievements/achievements_page.dart` + `widgets/{weekly_chart,achievement_list_sheet,report_card_sheet,achievement_utils}.dart` (4 KPIs, year progress banner, 我的记录 + 3-month green heatmap, custom-painted smooth Bezier weekly check-in chart with year switcher, latest achievement, full achievements sheet, shareable 成绩单) + `test/features/achievements/achievements_page_test.dart`.
+- Verified: `flutter analyze` (0 issues), `flutter test` (79/79 passed), rebuilt Release APK.
+
+

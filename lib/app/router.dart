@@ -4,10 +4,13 @@ import 'package:go_router/go_router.dart';
 
 import '../core/providers.dart';
 import '../core/widgets/common.dart';
+import '../domain/date_key.dart' as dk;
 import '../domain/services/schedule_service.dart';
+import '../features/achievements/achievements_page.dart';
 import '../features/home/home_page.dart';
 import '../features/placeholders/placeholder_pages.dart';
 import '../features/project_editor/project_editor_page.dart';
+import '../features/projects/project_detail_page.dart';
 import '../features/projects/projects_page.dart';
 import 'theme/app_colors.dart';
 
@@ -18,6 +21,9 @@ abstract final class Routes {
   static const achievements = '/achievements';
   static const me = '/me';
   static const more = '/more';
+
+  /// Project detail / stats page.
+  static String projectDetail(int id) => '/projects/$id';
 
   /// Create: `/editor`; edit: `/editor/<habitId>`.
   static const editor = '/editor';
@@ -52,6 +58,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         parentNavigatorKey: rootKey,
+        path: '/projects/:id',
+        builder: (_, state) => ProjectDetailPage(
+          habitId: int.tryParse(state.pathParameters['id'] ?? '') ?? -1,
+        ),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootKey,
         path: Routes.editor,
         builder: (_, _) => const ProjectEditorPage(),
         routes: [
@@ -67,19 +80,21 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-/// Number of today's scheduled, active, unfinished habits (badge on the 今日 tab).
-final pendingTodayCountProvider = Provider<int>((ref) {
+/// Today's scheduled & remaining habit counts for the 今日 tab badge.
+final todayBadgeStatusProvider = Provider<({int scheduled, int pending})>((ref) {
   final habits = ref.watch(habitsProvider).asData?.value ?? const [];
   final checkIns = ref.watch(allCheckInsProvider).asData?.value ?? const [];
   final today = ref.watch(todayProvider);
   const schedule = ScheduleService();
-  final todayKey =
-      '${today.year.toString().padLeft(4, '0')}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+  final todayKey = dk.dateKey(today);
   final counts = {for (final c in checkIns.where((c) => c.date == todayKey)) c.habitId: c.count};
-  return habits
-      .where((h) => h.isActive && schedule.isScheduledOn(h, today) && !schedule.isDone(h, counts[h.id] ?? 0))
-      .length;
+  final scheduled = habits.where((h) => h.isActive && schedule.isScheduledOn(h, today)).toList();
+  final pending = scheduled.where((h) => !schedule.isDone(h, counts[h.id] ?? 0)).length;
+  return (scheduled: scheduled.length, pending: pending);
 });
+
+/// Number of today's scheduled, active, unfinished habits (kept for backwards compatibility).
+final pendingTodayCountProvider = Provider<int>((ref) => ref.watch(todayBadgeStatusProvider).pending);
 
 class _Shell extends ConsumerWidget {
   const _Shell({required this.shell});
@@ -88,7 +103,8 @@ class _Shell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final pending = ref.watch(pendingTodayCountProvider);
+    final badgeStatus = ref.watch(todayBadgeStatusProvider);
+    final allDoneToday = badgeStatus.scheduled > 0 && badgeStatus.pending == 0;
     final today = ref.watch(todayProvider);
     return Scaffold(
       body: shell,
@@ -106,7 +122,8 @@ class _Shell extends ConsumerWidget {
                 _TabItem(
                   selected: shell.currentIndex == 0,
                   onTap: () => _go(0),
-                  badge: pending,
+                  badge: badgeStatus.pending,
+                  showDoneCheck: allDoneToday,
                   child: _CalendarTabIcon(day: today.day, selected: shell.currentIndex == 0),
                 ),
                 _TabItem(
@@ -118,8 +135,11 @@ class _Shell extends ConsumerWidget {
                 _TabItem(
                   selected: shell.currentIndex == 2,
                   onTap: () => _go(2),
-                  child: Icon(Icons.emoji_events_outlined,
-                      size: 32, color: shell.currentIndex == 2 ? AppColors.primary : AppColors.textSecondary),
+                  child: Icon(
+                    shell.currentIndex == 2 ? Icons.emoji_events : Icons.emoji_events_outlined,
+                    size: 32,
+                    color: shell.currentIndex == 2 ? AppColors.primary : AppColors.textSecondary,
+                  ),
                 ),
                 _TabItem(
                   selected: shell.currentIndex == 3,
@@ -145,19 +165,53 @@ class _Shell extends ConsumerWidget {
 }
 
 class _TabItem extends StatelessWidget {
-  const _TabItem({required this.selected, required this.onTap, required this.child, this.badge = 0});
+  const _TabItem({
+    required this.selected,
+    required this.onTap,
+    required this.child,
+    this.badge = 0,
+    this.showDoneCheck = false,
+  });
 
   final bool selected;
   final VoidCallback onTap;
   final Widget child;
   final int badge;
+  final bool showDoneCheck;
 
   @override
   Widget build(BuildContext context) {
+    Widget iconWidget = child;
+    if (showDoneCheck) {
+      iconWidget = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          child,
+          Positioned(
+            right: -7,
+            top: -7,
+            child: Container(
+              key: const ValueKey('today_all_done_badge'),
+              width: 20,
+              height: 20,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppColors.done,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1.5),
+              ),
+              child: const Icon(Icons.check, size: 13, color: Colors.white),
+            ),
+          ),
+        ],
+      );
+    } else if (badge > 0) {
+      iconWidget = CountBadge(count: badge, child: child);
+    }
     return Expanded(
       child: InkResponse(
         onTap: onTap,
-        child: Center(child: CountBadge(count: badge, child: child)),
+        child: Center(child: iconWidget),
       ),
     );
   }

@@ -104,6 +104,9 @@ void main() {
         await tester.tap(find.byKey(ValueKey('habit_checkbox_$habitId')));
         await tester.pumpAndSettle();
 
+        // All scheduled habits done today -> green checkmark badge on Today tab!
+        expect(find.byKey(const ValueKey('today_all_done_badge')), findsOneWidget);
+
         // Switch to Projects tab (index 1).
         await tester.tap(find.byIcon(Icons.assignment_outlined));
         await tester.pumpAndSettle();
@@ -111,6 +114,15 @@ void main() {
         expect(find.text('背单词'), findsOneWidget);
         // Total=1 Day, Month=1 Day, Streak=1 Day.
         expect(find.text('1'), findsNWidgets(3));
+
+        // Tap project card -> opens ProjectDetailPage with 每月统计 / 每年统计.
+        await tester.tap(find.text('背单词'));
+        await tester.pumpAndSettle();
+        expect(find.text('每月统计'), findsOneWidget);
+        expect(find.text('每年统计'), findsOneWidget);
+        await tester.tap(find.byIcon(Icons.arrow_back_ios_new));
+        await tester.pumpAndSettle();
+        expect(find.text('我的项目'), findsOneWidget);
 
         // Move startDate to 2026-11-22 so yesterday (2026-11-23) can be backfilled.
         await tester.runAsync(() async {
@@ -212,7 +224,8 @@ void main() {
 
       await tester.tap(find.byIcon(Icons.emoji_events_outlined));
       await tester.pumpAndSettle();
-      expect(find.text('成就'), findsOneWidget);
+      expect(find.text('我的成就'), findsOneWidget);
+      expect(find.text('成绩单'), findsOneWidget);
 
       await tester.tap(find.byIcon(Icons.account_circle));
       await tester.pumpAndSettle();

@@ -27,12 +27,6 @@ class _Placeholder extends StatelessWidget {
   }
 }
 
-class AchievementsPage extends StatelessWidget {
-  const AchievementsPage({super.key});
-  @override
-  Widget build(BuildContext context) => const _Placeholder(title: '成就', icon: Icons.emoji_events_outlined);
-}
-
 class MePage extends StatelessWidget {
   const MePage({super.key});
   @override
