@@ -58,4 +58,12 @@ Flutter binary: `export PATH="$HOME/development/flutter/bin:$PATH"`
 - Achievements (`我的成就`): `lib/features/achievements/achievements_page.dart` + `widgets/{weekly_chart,achievement_list_sheet,report_card_sheet,achievement_utils}.dart` (4 KPIs, year progress banner, 我的记录 + 3-month green heatmap, custom-painted smooth Bezier weekly check-in chart with year switcher, latest achievement, full achievements sheet, shareable 成绩单) + `test/features/achievements/achievements_page_test.dart`.
 - Verified: `flutter analyze` (0 issues), `flutter test` (79/79 passed), rebuilt Release APK.
 
+## Phase 3 Additions (GitHub Releases In-App Auto-Updater & More Page) — done
+- Android native: added `INTERNET` & `REQUEST_INSTALL_PACKAGES` permissions, `FileProvider` (`res/xml/update_file_paths.xml`), and `MethodChannel('com.ibetter.clone.ibetter/updater')` in `MainActivity.kt` (`getAppVersion`, `installApk` with Android 8+ unknown-app-sources flow).
+- Flutter updater: `lib/features/updates/{update_models,update_service,update_providers,update_dialog}.dart` supporting GitHub `/releases/latest` checks, optional download mirror prefix, streaming APK download with progress bar, ignore-tag support, and silent startup check in `_Shell`.
+- More page: replaced placeholder with `lib/features/more/more_page.dart` (version info, manual check, auto-check toggle, editable GitHub repo & mirror prefix, attribution dialog).
+- Release automation: `scripts/release.sh` and `.github/workflows/release-apk.yml`.
+- Tests: `test/features/updates/update_test.dart`.
+
+
 

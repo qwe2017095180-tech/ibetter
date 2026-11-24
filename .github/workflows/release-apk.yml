@@ -1,0 +1,46 @@
+name: Release Android APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies & test
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
+
+      - name: Build Release APK
+        run: |
+          flutter build apk --release \
+            --dart-define=UPDATE_REPO=${{ github.repository }}
+
+      - name: Rename APK
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk "ibetter-${{ github.ref_name }}.apk"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ibetter-${{ github.ref_name }}.apk
+          generate_release_notes: true

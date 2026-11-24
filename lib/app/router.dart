@@ -8,10 +8,14 @@ import '../domain/date_key.dart' as dk;
 import '../domain/services/schedule_service.dart';
 import '../features/achievements/achievements_page.dart';
 import '../features/home/home_page.dart';
+import '../features/more/more_page.dart';
 import '../features/placeholders/placeholder_pages.dart';
 import '../features/project_editor/project_editor_page.dart';
 import '../features/projects/project_detail_page.dart';
 import '../features/projects/projects_page.dart';
+import '../features/updates/update_dialog.dart';
+import '../features/updates/update_models.dart';
+import '../features/updates/update_providers.dart';
 import 'theme/app_colors.dart';
 
 /// Route paths. Keep in sync with docs/ARCHITECTURE.md.
@@ -96,16 +100,55 @@ final todayBadgeStatusProvider = Provider<({int scheduled, int pending})>((ref) 
 /// Number of today's scheduled, active, unfinished habits (kept for backwards compatibility).
 final pendingTodayCountProvider = Provider<int>((ref) => ref.watch(todayBadgeStatusProvider).pending);
 
-class _Shell extends ConsumerWidget {
+class _Shell extends ConsumerStatefulWidget {
   const _Shell({required this.shell});
 
   final StatefulNavigationShell shell;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_Shell> createState() => _ShellState();
+}
+
+class _ShellState extends ConsumerState<_Shell> {
+  bool _startupChecked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _runSilentUpdateCheck());
+  }
+
+  Future<void> _runSilentUpdateCheck() async {
+    if (_startupChecked || !mounted) return;
+    _startupChecked = true;
+    final service = ref.read(updateServiceProvider);
+    if (!service.supportsInAppInstall) return;
+
+    try {
+      final config = await ref.read(updateConfigProvider.future);
+      if (!config.autoCheck || !config.hasValidRepo) return;
+      final result = await service.checkForUpdate(config);
+      if (!mounted) return;
+      if (result.status == UpdateCheckStatus.updateAvailable &&
+          result.release != null &&
+          result.release!.tagName != config.ignoredTag) {
+        await showUpdateDialog(
+          context,
+          release: result.release!,
+          currentVersion: result.currentVersion,
+        );
+      }
+    } catch (_) {
+      // Startup checks must stay silent on transient network failures.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final badgeStatus = ref.watch(todayBadgeStatusProvider);
     final allDoneToday = badgeStatus.scheduled > 0 && badgeStatus.pending == 0;
     final today = ref.watch(todayProvider);
+    final shell = widget.shell;
     return Scaffold(
       body: shell,
       bottomNavigationBar: Container(
@@ -161,7 +204,7 @@ class _Shell extends ConsumerWidget {
     );
   }
 
-  void _go(int i) => shell.goBranch(i, initialLocation: i == shell.currentIndex);
+  void _go(int i) => widget.shell.goBranch(i, initialLocation: i == widget.shell.currentIndex);
 }
 
 class _TabItem extends StatelessWidget {

@@ -32,9 +32,3 @@ class MePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const _Placeholder(title: '我的', icon: Icons.account_circle_outlined);
 }
-
-class MorePage extends StatelessWidget {
-  const MorePage({super.key});
-  @override
-  Widget build(BuildContext context) => const _Placeholder(title: '更多', icon: Icons.more_horiz);
-}
