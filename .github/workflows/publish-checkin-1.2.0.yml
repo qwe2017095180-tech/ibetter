@@ -1,0 +1,36 @@
+name: Publish 轻松打卡 1.2.0
+on:
+  push:
+    branches: [release/qingsong-checkin-1.2.0-publish]
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: v1.2.0
+      RELEASE_COMMIT: 3c0ff443d4adec29536ab0ff4e962709061ef0de
+      APK_NAME: qingsong-checkin-v1.2.0-arm64.apk
+      APK_SHA256: 355292eed5c5970e00e5095f7b65475ca98dfd3b3d48f541304936cab68bf773
+      CERT_SHA256: 370a943ccbe15dfd90fc736293f86cc08d1cca8d4124ab47005cc50c0aabf040
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Reassemble and verify signed APK
+        run: |
+          grep -Fx 'version: 1.2.0+3' pubspec.yaml
+          cat release-staging/android-1.2.0/part-* | gzip -dc > "$APK_NAME"
+          printf '%s  %s\n' "$APK_SHA256" "$APK_NAME" | sha256sum --check -
+          signed_tool="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+          test -x "$signed_tool"
+          actual_cert="$("$signed_tool" verify --min-sdk-version 24 --print-certs "$APK_NAME" | sed -n 's/.*certificate SHA-256 digest: //p')"
+          test "$actual_cert" = "$CERT_SHA256"
+      - name: Publish stable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$RELEASE_TAG" "$APK_NAME" \
+            --repo "$GITHUB_REPOSITORY" --target "$RELEASE_COMMIT" \
+            --title "轻松打卡 $RELEASE_TAG" \
+            --notes "iBetter 更名为轻松打卡，更新应用图标。点今日打卡卡片可填写评分、心情和备注。此版本使用原 Android 签名，可覆盖升级。"
