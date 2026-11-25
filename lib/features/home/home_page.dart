@@ -186,7 +186,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                             count: count,
                             isDone: scheduleService.isDone(habit, count),
                             canCheckIn: canCheckIn,
-                            onTapCard: () => showCheckInDetailSheet(
+                            onTapCard: () =>
+                                context.push(Routes.editHabit(habit.id)),
+                            onLongPressCard: () => showCheckInDetailSheet(
                               context,
                               habit: habit,
                               date: selectedKey,

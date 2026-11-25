@@ -386,11 +386,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('今天没有安排的项目'), findsOneWidget);
 
-    // Jump back to today and tap the card to open the check-in record.
+    // The card opens the editor on tap. Long press opens the check-in record.
     await tester.tap(find.byIcon(Icons.access_time));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('周二健身'));
+    await tester.pumpAndSettle();
+    expect(find.text('Editor $habitId'), findsOneWidget);
+    GoRouter.of(tester.element(find.text('Editor $habitId'))).pop();
+    await tester.pumpAndSettle();
+
+    await tester.longPress(find.text('周二健身'));
     await tester.pumpAndSettle();
     expect(find.text('打卡详情'), findsOneWidget);
     final note = find.byType(TextFormField);
@@ -403,7 +409,7 @@ void main() {
     expect(record?.single.note, '今天加练了十分钟');
     expect(record?.single.count, 0);
 
-    await tester.tap(find.text('周二健身'));
+    await tester.longPress(find.text('周二健身'));
     await tester.pumpAndSettle();
     expect(find.text('今天加练了十分钟'), findsOneWidget);
     await tester.tap(find.text('编辑项目'));

@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../app/app_brand.dart';
 import '../../app/theme/app_colors.dart';
 import '../../core/widgets/common.dart';
+import '../icon_picker/icon_registry.dart';
 import '../qingsong/qingsong_client.dart';
 import '../qingsong/qingsong_config.dart';
 import '../qingsong/qingsong_providers.dart';
@@ -212,21 +213,14 @@ class _MorePageState extends ConsumerState<MorePage> {
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
             child: Row(
               children: [
-                const ClipRRect(
-                  borderRadius: BorderRadius.all(Radius.circular(13)),
-                  child: Image(
-                    image: AssetImage(AppBrand.iconAsset),
-                    width: 52,
-                    height: 52,
-                  ),
-                ),
+                const HabitIcon('achievement/trophy', size: 52),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        AppBrand.name,
+                        '${AppBrand.name} · 人生养成计划',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,

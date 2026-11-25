@@ -14,6 +14,7 @@ class HabitCheckInCard extends StatelessWidget {
     required this.canCheckIn,
     required this.onTapCard,
     required this.onTapCheck,
+    this.onLongPressCard,
     this.onLongPressCheck,
   });
 
@@ -23,6 +24,7 @@ class HabitCheckInCard extends StatelessWidget {
   final bool canCheckIn;
   final VoidCallback onTapCard;
   final VoidCallback onTapCheck;
+  final VoidCallback? onLongPressCard;
   final VoidCallback? onLongPressCheck;
 
   @override
@@ -34,6 +36,7 @@ class HabitCheckInCard extends StatelessWidget {
       child: RaisedCard(
         key: ValueKey('habit_card_${habit.id}'),
         onTap: onTapCard,
+        onLongPress: onLongPressCard,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [

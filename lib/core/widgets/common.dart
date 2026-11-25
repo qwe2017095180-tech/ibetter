@@ -135,6 +135,7 @@ class RaisedCard extends StatelessWidget {
     this.color = AppColors.habitCard,
     this.edgeColor = AppColors.habitCardShadow,
     this.onTap,
+    this.onLongPress,
     this.padding = const EdgeInsets.fromLTRB(16, 12, 16, 12),
   });
 
@@ -142,6 +143,7 @@ class RaisedCard extends StatelessWidget {
   final Color color;
   final Color edgeColor;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final EdgeInsetsGeometry padding;
 
   @override
@@ -158,6 +160,7 @@ class RaisedCard extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(AppRadius.card),
           onTap: onTap,
+          onLongPress: onLongPress,
           child: Padding(padding: padding, child: child),
         ),
       ),
