@@ -27,6 +27,7 @@ class SyncResult {
   String get summary {
     final parts = <String>[
       if (uploaded > 0) '上传 $uploaded 条',
+      if (statusPushed > 0) '同步状态 $statusPushed 条',
       if (inserted > 0) '新增 $inserted 条',
       if (updated > 0) '更新 $updated 条',
       if (removed > 0) '移除 $removed 条',

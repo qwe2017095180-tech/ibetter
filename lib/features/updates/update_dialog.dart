@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../app/theme/app_colors.dart';
 import 'update_models.dart';
 import 'update_providers.dart';
+import 'update_service.dart';
 
 /// Displays an interactive update dialog with changelog, live download progress,
 /// and direct Android installer handoff.
@@ -52,6 +53,7 @@ class _UpdateDialogState extends ConsumerState<_UpdateDialog> {
   int _receivedBytes = 0;
   int _totalBytes = 0;
   String? _downloadedPath;
+  String? _statusText;
   String? _errorText;
 
   String _formatBytes(int bytes) {
@@ -62,14 +64,16 @@ class _UpdateDialogState extends ConsumerState<_UpdateDialog> {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
-  Future<void> _startDownloadAndInstall() async {
+  Future<void> _startDownloadAndInstall({UpdateConfig? overrideConfig}) async {
     final service = ref.read(updateServiceProvider);
-    final config = ref.read(updateConfigProvider).asData?.value ?? const UpdateConfig();
+    final config =
+        overrideConfig ?? ref.read(updateConfigProvider).asData?.value ?? const UpdateConfig();
 
     setState(() {
       _phase = _DownloadPhase.downloading;
       _receivedBytes = 0;
       _totalBytes = widget.release.assetSizeBytes;
+      _statusText = null;
       _errorText = null;
     });
 
@@ -84,6 +88,10 @@ class _UpdateDialogState extends ConsumerState<_UpdateDialog> {
             if (total > 0) _totalBytes = total;
           });
         },
+        onStatus: (status) {
+          if (!mounted) return;
+          setState(() => _statusText = status);
+        },
       );
       if (!mounted) return;
       _downloadedPath = path;
@@ -92,9 +100,28 @@ class _UpdateDialogState extends ConsumerState<_UpdateDialog> {
       if (!mounted) return;
       setState(() {
         _phase = _DownloadPhase.error;
-        _errorText = '下载失败：$e';
+        _statusText = null;
+        _errorText = formatUpdateError(e);
       });
     }
+  }
+
+  Future<void> _switchMirrorAndRetry(String prefix) async {
+    await ref.read(updateConfigProvider.notifier).setMirrorPrefix(prefix);
+    if (!mounted) return;
+    final updated = (ref.read(updateConfigProvider).asData?.value ?? const UpdateConfig())
+        .copyWith(mirrorPrefix: prefix);
+    await _startDownloadAndInstall(overrideConfig: updated);
+  }
+
+  Future<void> _openInBrowser() async {
+    final service = ref.read(updateServiceProvider);
+    final config = ref.read(updateConfigProvider).asData?.value ?? const UpdateConfig();
+    final opened = await service.openInBrowser(widget.release, config);
+    if (!mounted || opened) return;
+    setState(() {
+      _errorText = '无法打开系统浏览器，请手动访问 GitHub Release 页面下载';
+    });
   }
 
   Future<void> _triggerInstall() async {
@@ -130,9 +157,12 @@ class _UpdateDialogState extends ConsumerState<_UpdateDialog> {
   @override
   Widget build(BuildContext context) {
     final release = widget.release;
+    final config = ref.watch(updateConfigProvider).asData?.value ?? const UpdateConfig();
+    final currentMirror = UpdateConfig.normalizeMirrorPrefix(config.mirrorPrefix);
     final progress = _totalBytes > 0 ? (_receivedBytes / _totalBytes).clamp(0.0, 1.0) : null;
 
     return AlertDialog(
+      scrollable: true,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       title: Row(
         children: [
@@ -164,7 +194,7 @@ class _UpdateDialogState extends ConsumerState<_UpdateDialog> {
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
-              constraints: const BoxConstraints(maxHeight: 160),
+              constraints: const BoxConstraints(maxHeight: 150),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: AppColors.inputFill,
@@ -195,6 +225,13 @@ class _UpdateDialogState extends ConsumerState<_UpdateDialog> {
                     : '正在下载 ${_formatBytes(_receivedBytes)}...',
                 style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
+              if (_statusText != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  _statusText!,
+                  style: const TextStyle(fontSize: 12, color: AppColors.primary, height: 1.35),
+                ),
+              ],
             ],
             if (_phase == _DownloadPhase.awaitingPermission) ...[
               const SizedBox(height: 14),
@@ -212,10 +249,54 @@ class _UpdateDialogState extends ConsumerState<_UpdateDialog> {
             ],
             if (_phase == _DownloadPhase.error && _errorText != null) ...[
               const SizedBox(height: 14),
-              Text(
-                _errorText!,
-                style: const TextStyle(fontSize: 13, color: AppColors.badge, height: 1.4),
+              Container(
+                key: const ValueKey('update_error_box'),
+                width: double.infinity,
+                constraints: const BoxConstraints(maxHeight: 110),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.badge.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: SingleChildScrollView(
+                  child: Text(
+                    _errorText!,
+                    style: const TextStyle(fontSize: 13, color: AppColors.badge, height: 1.4),
+                  ),
+                ),
               ),
+              if (_downloadedPath == null) ...[
+                const SizedBox(height: 10),
+                const Text(
+                  '点击下方线路切换并重试：',
+                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final preset in UpdateConfig.mirrorPresets)
+                      ActionChip(
+                        label: Text(
+                          preset.label,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: currentMirror == preset.prefix
+                                ? AppColors.primary
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                        backgroundColor: currentMirror == preset.prefix
+                            ? AppColors.primary.withValues(alpha: 0.12)
+                            : AppColors.inputFill,
+                        side: BorderSide.none,
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => _switchMirrorAndRetry(preset.prefix),
+                      ),
+                  ],
+                ),
+              ],
             ],
           ],
         ),
@@ -272,6 +353,12 @@ class _UpdateDialogState extends ConsumerState<_UpdateDialog> {
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('关闭'),
           ),
+          if (_downloadedPath == null)
+            TextButton(
+              key: const ValueKey('update_browser_download_btn'),
+              onPressed: _openInBrowser,
+              child: const Text('浏览器下载'),
+            ),
           FilledButton(
             onPressed: _downloadedPath != null ? _triggerInstall : _startDownloadAndInstall,
             style: FilledButton.styleFrom(backgroundColor: AppColors.primary),

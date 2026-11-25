@@ -32,6 +32,7 @@ class _FakePlatform implements UpdatePlatformAdapter {
   final Directory cacheDir;
   InstallResult installResult;
   final List<String> installedPaths = [];
+  final List<String> openedUrls = [];
 
   @override
   bool get isAndroid => true;
@@ -47,6 +48,12 @@ class _FakePlatform implements UpdatePlatformAdapter {
   Future<InstallResult> installApk(String filePath) async {
     installedPaths.add(filePath);
     return installResult;
+  }
+
+  @override
+  Future<bool> openUrl(String url) async {
+    openedUrls.add(url);
+    return true;
   }
 }
 
@@ -72,6 +79,7 @@ class _StubUpdateService extends UpdateService {
     ReleaseInfo release,
     UpdateConfig config, {
     void Function(int received, int total)? onProgress,
+    void Function(String status)? onStatus,
   }) =>
       downloadHandler(release, config, onProgress);
 }
@@ -256,6 +264,217 @@ void main() {
     platform.installResult = InstallResult.launched;
     await tester.tap(find.text('继续安装'));
     await tester.pumpAndSettle();
+    expect(find.text('重新拉起安装'), findsOneWidget);
+  });
+
+  test('formatUpdateError hides signed redirect URLs and maps network failures cleanly', () {
+    final longUri = Uri.parse(
+      'https://release-assets.githubusercontent.com/asset/123?sig=abc&jwt=eyJhbGciOiJIUzI1NiJ9.very-long-token',
+    );
+    final formatted = formatUpdateError(
+      HttpException('Connection closed while receiving data', uri: longUri),
+    );
+    expect(formatted, contains('下载连接中途断开'));
+    expect(formatted, isNot(contains('release-assets')));
+    expect(formatted, isNot(contains('jwt=')));
+
+    expect(
+      formatUpdateError(const SocketException('Failed host lookup')),
+      contains('网络连接失败'),
+    );
+    expect(
+      formatUpdateError(const HttpException('下载失败（HTTP 502）')),
+      contains('HTTP 502'),
+    );
+  });
+
+  test('UpdateService resumes interrupted APK download via HTTP Range 206', () async {
+    await HttpOverrides.runWithHttpOverrides(() async {
+      final tmpDir = await Directory.systemTemp.createTemp('ibetter_resume_test_');
+      final payload = List<int>.generate(24576, (i) => (i * 7) % 256);
+      final splitAt = 10000;
+      var requestCount = 0;
+
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      server.listen((req) async {
+        requestCount++;
+        final range = req.headers.value(HttpHeaders.rangeHeader);
+        if (requestCount == 1) {
+          // Simulate mid-transfer disconnect after sending partial bytes.
+          final socket = await req.response.detachSocket(writeHeaders: false);
+          socket.write(
+            'HTTP/1.1 200 OK\r\n'
+            'Content-Length: ${payload.length}\r\n'
+            'Connection: close\r\n'
+            '\r\n',
+          );
+          socket.add(payload.sublist(0, splitAt));
+          await socket.flush();
+          socket.destroy();
+          return;
+        }
+        expect(range, 'bytes=$splitAt-');
+        final rest = payload.sublist(splitAt);
+        req.response
+          ..statusCode = HttpStatus.partialContent
+          ..headers.set(
+            HttpHeaders.contentRangeHeader,
+            'bytes $splitAt-${payload.length - 1}/${payload.length}',
+          )
+          ..headers.contentLength = rest.length
+          ..add(rest);
+        await req.response.close();
+      });
+
+      try {
+        final platform = _FakePlatform(cacheDir: tmpDir);
+        final service = UpdateService(
+          platform: platform,
+          retryDelay: Duration.zero,
+        );
+        final release = ReleaseInfo(
+          tagName: 'v1.2.2',
+          version: const AppVersion(major: 1, minor: 2, patch: 2),
+          title: 'v1.2.2',
+          changelog: '断点续传测试',
+          apkUrl: 'http://127.0.0.1:${server.port}/qingsong-v1.2.2.apk',
+          assetName: 'qingsong-v1.2.2.apk',
+          assetSizeBytes: payload.length,
+        );
+
+        final statuses = <String>[];
+        final path = await service.downloadApk(
+          release,
+          const UpdateConfig(repo: 'alice/ibetter'),
+          onStatus: statuses.add,
+        );
+
+        expect(requestCount, 2);
+        expect(File(path).readAsBytesSync(), payload);
+        expect(statuses.any((s) => s.contains('断点续传')), isTrue);
+      } finally {
+        await server.close(force: true);
+        await tmpDir.delete(recursive: true);
+      }
+    }, _PassthroughHttpOverrides());
+  });
+
+  test('UpdateService rejects HTML error pages returned by broken mirrors', () async {
+    await HttpOverrides.runWithHttpOverrides(() async {
+      final tmpDir = await Directory.systemTemp.createTemp('ibetter_html_test_');
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      server.listen((req) async {
+        req.response
+          ..statusCode = HttpStatus.ok
+          ..headers.contentType = ContentType.html
+          ..write('<html><body>Rate limited</body></html>');
+        await req.response.close();
+      });
+
+      try {
+        final service = UpdateService(
+          platform: _FakePlatform(cacheDir: tmpDir),
+          maxAttemptsPerSource: 1,
+          retryDelay: Duration.zero,
+        );
+        final release = ReleaseInfo(
+          tagName: 'v1.2.2',
+          version: const AppVersion(major: 1, minor: 2, patch: 2),
+          title: 'v1.2.2',
+          changelog: 'test',
+          apkUrl: 'http://127.0.0.1:${server.port}/app.apk',
+          assetName: 'app.apk',
+          assetSizeBytes: 1000,
+        );
+
+        await expectLater(
+          service.downloadApk(release, const UpdateConfig(repo: 'alice/ibetter')),
+          throwsA(
+            isA<HttpException>().having(
+              (e) => e.message,
+              'message',
+              contains('非安装包内容'),
+            ),
+          ),
+        );
+      } finally {
+        await server.close(force: true);
+        await tmpDir.delete(recursive: true);
+      }
+    }, _PassthroughHttpOverrides());
+  });
+
+  testWidgets('UpdateDialog shows sanitized error, mirror switch, and browser download fallback',
+      (tester) async {
+    final tmpDir = Directory.systemTemp.createTempSync('ibetter_err_dialog_');
+    addTearDown(() => tmpDir.deleteSync(recursive: true));
+
+    final store = _MemoryConfigStore(const UpdateConfig(repo: 'alice/ibetter'));
+    final platform = _FakePlatform(cacheDir: tmpDir);
+    final release = ReleaseInfo(
+      tagName: 'v1.2.2',
+      version: const AppVersion(major: 1, minor: 2, patch: 2),
+      title: '轻松打卡 v1.2.2',
+      changelog: '修复下载断流',
+      apkUrl: 'https://github.com/alice/ibetter/releases/download/v1.2.2/app.apk',
+      assetName: 'app.apk',
+      assetSizeBytes: 2048,
+    );
+    final fakeApk = File('${tmpDir.path}/app.apk')..writeAsBytesSync(utf8.encode('apk'));
+    final seenMirrors = <String>[];
+
+    final service = _StubUpdateService(
+      platform: platform,
+      checkResult: UpdateCheckResult(
+        status: UpdateCheckStatus.updateAvailable,
+        currentVersion: const AppVersion(major: 1, minor: 1, patch: 0, buildNumber: 2),
+        release: release,
+      ),
+      downloadHandler: (rel, cfg, onProgress) async {
+        seenMirrors.add(cfg.mirrorPrefix);
+        if (cfg.mirrorPrefix.isEmpty) {
+          throw HttpException(
+            'Connection closed while receiving data',
+            uri: Uri.parse('https://release-assets.githubusercontent.com/secret?jwt=verysecret'),
+          );
+        }
+        return fakeApk.path;
+      },
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          updateConfigStoreProvider.overrideWithValue(store),
+          updateServiceProvider.overrideWithValue(service),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const MorePage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('more_check_update_row')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('立即更新'));
+    await tester.pumpAndSettle();
+
+    // Error is clean and does not leak signed URL / JWT.
+    expect(find.byKey(const ValueKey('update_error_box')), findsOneWidget);
+    expect(find.textContaining('下载连接中途断开'), findsOneWidget);
+    expect(find.textContaining('verysecret'), findsNothing);
+
+    // Browser download button works.
+    await tester.tap(find.byKey(const ValueKey('update_browser_download_btn')));
+    await tester.pumpAndSettle();
+    expect(platform.openedUrls, [release.apkUrl]);
+
+    // Tapping a mirror chip saves it and retries successfully.
+    await tester.tap(find.text('gh-proxy.com'));
+    await tester.pumpAndSettle();
+    expect(seenMirrors, ['', 'https://gh-proxy.com/']);
     expect(find.text('重新拉起安装'), findsOneWidget);
   });
 }

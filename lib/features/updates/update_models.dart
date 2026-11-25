@@ -150,6 +150,14 @@ class ReleaseInfo {
   }
 }
 
+/// Preset download mirror entry shown in settings and error recovery UI.
+class UpdateMirrorPreset {
+  const UpdateMirrorPreset({required this.label, required this.prefix});
+
+  final String label;
+  final String prefix;
+}
+
 /// Persisted user/build update settings.
 class UpdateConfig {
   const UpdateConfig({
@@ -166,6 +174,20 @@ class UpdateConfig {
   );
   static const String defaultMirrorPrefix =
       String.fromEnvironment('UPDATE_MIRROR', defaultValue: '');
+
+  /// Common mirror presets for quick one-tap switching on mobile.
+  static const List<UpdateMirrorPreset> mirrorPresets = [
+    UpdateMirrorPreset(label: '直连 GitHub', prefix: ''),
+    UpdateMirrorPreset(label: 'gh-proxy.com', prefix: 'https://gh-proxy.com/'),
+    UpdateMirrorPreset(label: 'ghfast.top', prefix: 'https://ghfast.top/'),
+    UpdateMirrorPreset(label: 'gh-proxy.org', prefix: 'https://gh-proxy.org/'),
+  ];
+
+  /// Automatic fallback mirrors tried when direct GitHub download fails.
+  static const List<String> fallbackMirrorPrefixes = [
+    'https://gh-proxy.com/',
+    'https://ghfast.top/',
+  ];
 
   /// GitHub repository in `owner/repo` format.
   final String repo;
@@ -190,13 +212,21 @@ class UpdateConfig {
         !trimmed.contains(' ');
   }
 
-  /// Applies [mirrorPrefix] to a raw GitHub release download URL if configured.
-  String resolveDownloadUrl(String rawUrl) {
-    final prefix = mirrorPrefix.trim();
-    if (prefix.isEmpty) return rawUrl;
-    final normalized = prefix.endsWith('/') ? prefix : '$prefix/';
+  static String normalizeMirrorPrefix(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return '';
+    return trimmed.endsWith('/') ? trimmed : '$trimmed/';
+  }
+
+  /// Applies [prefix] to a raw GitHub release download URL if non-empty.
+  static String applyMirrorPrefix(String rawUrl, String prefix) {
+    final normalized = normalizeMirrorPrefix(prefix);
+    if (normalized.isEmpty) return rawUrl;
     return '$normalized$rawUrl';
   }
+
+  /// Applies [mirrorPrefix] to a raw GitHub release download URL if configured.
+  String resolveDownloadUrl(String rawUrl) => applyMirrorPrefix(rawUrl, mirrorPrefix);
 
   UpdateConfig copyWith({
     String? repo,

@@ -81,10 +81,14 @@ class _MorePageState extends ConsumerState<MorePage> {
   Future<void> _editMirrorDialog(String initialMirror) async {
     final saved = await _showTextPromptDialog(
       title: '下载加速前缀（可选）',
-      description: '留空则直连 GitHub 下载；若国内网络下载较慢，可填入自定义 GitHub 文件代理前缀（如 https://gh-proxy.com/）。',
+      description: '留空则直连 GitHub（失败会自动尝试镜像）；也可直接点选下方常用加速前缀或手动填写。',
       initialValue: initialMirror,
       hintText: '留空表示直连',
       clearLabel: '恢复直连',
+      presets: [
+        for (final preset in UpdateConfig.mirrorPresets)
+          (label: preset.label, value: preset.prefix),
+      ],
     );
     if (saved == null || !mounted) return;
     await ref.read(updateConfigProvider.notifier).setMirrorPrefix(saved);
@@ -131,6 +135,7 @@ class _MorePageState extends ConsumerState<MorePage> {
     Key? fieldKey,
     String? clearLabel,
     bool uppercase = false,
+    List<({String label, String value})> presets = const [],
   }) {
     return showDialog<String>(
       context: context,
@@ -142,6 +147,7 @@ class _MorePageState extends ConsumerState<MorePage> {
         fieldKey: fieldKey,
         clearLabel: clearLabel,
         uppercase: uppercase,
+        presets: presets,
       ),
     );
   }
@@ -464,6 +470,7 @@ class _TextPromptDialog extends StatefulWidget {
     this.fieldKey,
     this.clearLabel,
     this.uppercase = false,
+    this.presets = const [],
   });
 
   final String title;
@@ -473,6 +480,7 @@ class _TextPromptDialog extends StatefulWidget {
   final Key? fieldKey;
   final String? clearLabel;
   final bool uppercase;
+  final List<({String label, String value})> presets;
 
   @override
   State<_TextPromptDialog> createState() => _TextPromptDialogState();
@@ -506,6 +514,26 @@ class _TextPromptDialogState extends State<_TextPromptDialog> {
             widget.description,
             style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
           ),
+          if (widget.presets.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final preset in widget.presets)
+                  ActionChip(
+                    label: Text(preset.label, style: const TextStyle(fontSize: 12)),
+                    backgroundColor: AppColors.inputFill,
+                    side: BorderSide.none,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () {
+                      _controller.text = preset.value;
+                      _controller.selection = TextSelection.collapsed(offset: preset.value.length);
+                    },
+                  ),
+              ],
+            ),
+          ],
           const SizedBox(height: 12),
           TextField(
             key: widget.fieldKey,
