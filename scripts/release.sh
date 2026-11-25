@@ -49,7 +49,7 @@ fi
 
 flutter build apk --release --target-platform android-arm64 "${DART_DEFINES[@]}"
 APK_SRC="build/app/outputs/flutter-apk/app-release.apk"
-APK_NAME="ibetter-v${NEW_VER}-arm64.apk"
+APK_NAME="qingsong-checkin-v${NEW_VER}-arm64.apk"
 APK_OUT="build/app/outputs/flutter-apk/${APK_NAME}"
 cp "$APK_SRC" "$APK_OUT"
 
@@ -60,7 +60,7 @@ git push origin HEAD --tags
 
 gh release create "v${NEW_VER}" \
   --repo "$REPO" \
-  --title "iBetter v${NEW_VER}" \
+  --title "轻松打卡 v${NEW_VER}" \
   --notes "$NOTES"
 
 TOKEN="$(gh auth token)"

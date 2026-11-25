@@ -89,7 +89,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // Back on Home: habit is visible, pending badge = 1.
-        expect(find.text('iBetter'), findsWidgets);
+        expect(find.text('轻松打卡'), findsWidgets);
         expect(find.text('背单词'), findsOneWidget);
         expect(find.text('1'), findsOneWidget); // badge on Today tab
 

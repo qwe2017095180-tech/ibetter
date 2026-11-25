@@ -253,7 +253,7 @@ void main() {
     await tester.tap(find.text('复制成绩单'));
     await tester.pumpAndSettle();
     expect(find.text('已复制成绩单'), findsOneWidget);
-    expect(copiedText, contains('iBetter 2026 年度成绩单'));
+    expect(copiedText, contains('轻松打卡 2026 年度成绩单'));
     expect(copiedText, contains('完成最多的项目：应付作业'));
 
     await tester.tap(find.text('关闭'));

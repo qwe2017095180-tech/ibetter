@@ -68,7 +68,12 @@ void main() {
     expect((await checkIns.watchByMonth(2026, 10).first), isEmpty);
 
     await checkIns.setCount(id, '2026-11-24', 0);
-    expect(await checkIns.watchByDate('2026-11-24').first, isEmpty);
+    day = await checkIns.watchByDate('2026-11-24').first;
+    expect(day.single.count, 0);
+    expect(day.single.score, 90);
+    expect(day.single.mood, 3);
+    await checkIns.setCount(id, '2026-11-01', 0);
+    expect(await checkIns.watchByDate('2026-11-01').first, isEmpty);
 
     await reminders.replaceForHabit(id, const [ReminderDraft(minutesOfDay: 480)]);
     await habits.delete(id);

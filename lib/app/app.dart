@@ -3,6 +3,7 @@ import 'package:cupertino_ui/cupertino_ui.dart' show GlobalCupertinoLocalization
 import 'package:flutter_localizations/flutter_localizations.dart' show GlobalWidgetsLocalizations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'app_brand.dart';
 import 'router.dart';
 import 'theme/app_theme.dart';
 
@@ -12,7 +13,7 @@ class IBetterApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
-      title: 'iBetter',
+      title: AppBrand.name,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       routerConfig: ref.watch(routerProvider),

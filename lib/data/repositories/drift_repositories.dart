@@ -159,9 +159,17 @@ class DriftCheckInRepository implements CheckInRepository {
   @override
   Future<void> setCount(int habitId, String date, int count) async {
     if (count <= 0) {
-      await (_db.delete(_db.checkIns)
-            ..where((t) => t.habitId.equals(habitId) & t.date.equals(date)))
-          .go();
+      await _db.transaction(() async {
+        final checkIns = _db.checkIns;
+        final day = checkIns.habitId.equals(habitId) & checkIns.date.equals(date);
+        final hasDetail = checkIns.score.isNotNull() |
+            checkIns.mood.isNotNull() |
+            checkIns.note.isNotNull();
+        await (_db.update(checkIns)..where((_) => day & hasDetail)).write(
+          CheckInsCompanion(doneCount: const Value(0), updatedAt: Value(_now())),
+        );
+        await (_db.delete(checkIns)..where((_) => day & hasDetail.not())).go();
+      });
       return;
     }
     await _db.into(_db.checkIns).insert(

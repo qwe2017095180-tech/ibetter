@@ -42,7 +42,7 @@ class _ReportCardDialog extends StatelessWidget {
   String _buildShareText() {
     final topHabit = stats.topHabitName ?? '暂无';
     return [
-      'iBetter ${today.year} 年度成绩单',
+      '轻松打卡 ${today.year} 年度成绩单',
       '项目数：${stats.projectCount}',
       '记录天数：${stats.recordedDays} 天',
       '达成次数：${stats.totalCompletions} 次',

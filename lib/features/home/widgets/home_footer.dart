@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../../app/app_brand.dart';
 import '../../../app/theme/app_colors.dart';
 
 /// Faint brand footer at the bottom of the home screen.
@@ -20,7 +21,7 @@ class HomeFooter extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppRadius.pill),
             ),
             child: const Text(
-              'iBetter',
+              AppBrand.name,
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 13,

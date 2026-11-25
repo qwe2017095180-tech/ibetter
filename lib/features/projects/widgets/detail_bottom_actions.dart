@@ -16,7 +16,7 @@ String buildHabitShareText(Habit habit, HabitStats stats) {
     ScheduleType.timesPerMonth => '月',
   };
   final buffer = StringBuffer()
-    ..writeln('我在 iBetter 坚持「${habit.name}」')
+    ..writeln('我在轻松打卡坚持「${habit.name}」')
     ..writeln('累计完成：${stats.totalDays} 天')
     ..writeln('当前连续：${stats.currentStreak} $streakUnit')
     ..write('开始于：$start');

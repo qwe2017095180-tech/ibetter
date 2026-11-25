@@ -85,7 +85,7 @@ class QingsongClient implements QingsongApi {
         if (decoded is Map<String, dynamic>) json = decoded;
       } catch (_) {}
       if (res.statusCode == 401) {
-        throw const QingsongException('配对码不对，请在电脑的「连接 iBetter」页面核对', statusCode: 401);
+        throw const QingsongException('配对码不对，请在电脑的「连接轻松打卡」页面核对', statusCode: 401);
       }
       if (res.statusCode == 429) {
         throw QingsongException(json?['error'] as String? ?? '尝试次数太多，请稍后再试', statusCode: 429);
@@ -98,9 +98,9 @@ class QingsongClient implements QingsongApi {
     } on QingsongException {
       rethrow;
     } on TimeoutException {
-      throw const QingsongException('连接电脑超时：确认手机和电脑在同一 Wi-Fi，且电脑上已开启「连接 iBetter」');
+      throw const QingsongException('连接电脑超时：确认手机和电脑在同一 Wi-Fi，且电脑上已开启「连接轻松打卡」');
     } on SocketException {
-      throw const QingsongException('连不上电脑：确认地址正确、电脑上轻松日程正在运行并已开启「连接 iBetter」');
+      throw const QingsongException('连不上电脑：确认地址正确、电脑上轻松日程正在运行并已开启「连接轻松打卡」');
     } on HttpException catch (e) {
       throw QingsongException('网络错误：${e.message}');
     } finally {

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../app/app_brand.dart';
 import '../../app/router.dart';
 import '../../app/theme/app_colors.dart';
 import '../../core/providers.dart';
@@ -105,7 +106,7 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppTopBar(
-        title: 'iBetter',
+        title: AppBrand.name,
         leading: PillIconButton(
           icon: Icons.arrow_back_ios_new,
           onPressed: () => Navigator.of(context).maybePop(),

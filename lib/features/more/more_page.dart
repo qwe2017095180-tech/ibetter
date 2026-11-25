@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../app/app_brand.dart';
 import '../../app/theme/app_colors.dart';
 import '../../core/widgets/common.dart';
-import '../icon_picker/icon_registry.dart';
 import '../qingsong/qingsong_client.dart';
 import '../qingsong/qingsong_config.dart';
 import '../qingsong/qingsong_providers.dart';
@@ -93,7 +93,7 @@ class _MorePageState extends ConsumerState<MorePage> {
   Future<void> _editQingsongAddressDialog(String initialAddress) async {
     final saved = await _showTextPromptDialog(
       title: '电脑地址（轻松日程）',
-      description: '在电脑浏览器打开轻松日程的「📱 连接 iBetter」页面，开启后把显示的局域网地址填在这里：',
+      description: '在电脑浏览器打开轻松日程的「连接轻松打卡」页面，开启后把显示的局域网地址填在这里：',
       initialValue: initialAddress,
       hintText: '例如：192.168.1.8:7790',
       fieldKey: const ValueKey('qingsong_address_input'),
@@ -111,7 +111,7 @@ class _MorePageState extends ConsumerState<MorePage> {
   Future<void> _editQingsongTokenDialog(String initialToken) async {
     final saved = await _showTextPromptDialog(
       title: '配对码（轻松日程）',
-      description: '填写电脑「连接 iBetter」页面上显示的 8 位配对码（不区分大小写）：',
+      description: '填写电脑「连接轻松打卡」页面上显示的 8 位配对码（不区分大小写）：',
       initialValue: initialToken,
       hintText: '8 位配对码',
       fieldKey: const ValueKey('qingsong_token_input'),
@@ -212,14 +212,21 @@ class _MorePageState extends ConsumerState<MorePage> {
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
             child: Row(
               children: [
-                const HabitIcon('achievement/trophy', size: 52),
+                const ClipRRect(
+                  borderRadius: BorderRadius.all(Radius.circular(13)),
+                  child: Image(
+                    image: AssetImage(AppBrand.iconAsset),
+                    width: 52,
+                    height: 52,
+                  ),
+                ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'iBetter · 人生养成计划',
+                        AppBrand.name,
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,

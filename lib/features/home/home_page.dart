@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../app/app_brand.dart';
 import '../../app/router.dart';
 import '../../app/theme/app_colors.dart';
 import '../../core/providers.dart';
@@ -15,6 +16,7 @@ import '../qingsong/qingsong_providers.dart';
 import 'home_providers.dart';
 import 'widgets/agenda_section.dart';
 import 'widgets/calendar_section.dart';
+import 'widgets/check_in_detail_sheet.dart';
 import 'widgets/habit_check_in_card.dart';
 import 'widgets/home_empty_state.dart';
 import 'widgets/home_footer.dart';
@@ -74,10 +76,12 @@ class _HomePageState extends ConsumerState<HomePage> {
     final nextCount = habit.dailyTarget <= 1
         ? (currentCount >= 1 ? 0 : 1)
         : (currentCount < habit.dailyTarget
-            ? currentCount + 1
-            : habit.dailyTarget);
+              ? currentCount + 1
+              : habit.dailyTarget);
     if (nextCount == currentCount) return;
-    await ref.read(checkInRepositoryProvider).setCount(habit.id, key, nextCount);
+    await ref
+        .read(checkInRepositoryProvider)
+        .setCount(habit.id, key, nextCount);
   }
 
   Future<void> _onLongPressCheck(
@@ -106,17 +110,17 @@ class _HomePageState extends ConsumerState<HomePage> {
     final habitsAsync = ref.watch(habitsProvider);
     final checkIns =
         ref.watch(checkInsByDateProvider(selectedKey)).asData?.value ??
-            const <CheckIn>[];
+        const <CheckIn>[];
     final scheduleService = ref.watch(scheduleServiceProvider);
 
-    final countByHabit = {
-      for (final c in checkIns) c.habitId: c.count,
+    final checkInByHabit = {
+      for (final checkIn in checkIns) checkIn.habitId: checkIn,
     };
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppTopBar(
-        title: 'iBetter',
+        title: AppBrand.name,
         leading: PillIconButton(
           icon: Icons.access_time,
           tooltip: '回到今天',
@@ -170,7 +174,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                     for (final habit in scheduled)
                       Builder(
                         builder: (context) {
-                          final count = countByHabit[habit.id] ?? 0;
+                          final checkIn = checkInByHabit[habit.id];
+                          final count = checkIn?.count ?? 0;
                           final canCheckIn = scheduleService.canCheckIn(
                             habit,
                             selectedDate,
@@ -181,8 +186,24 @@ class _HomePageState extends ConsumerState<HomePage> {
                             count: count,
                             isDone: scheduleService.isDone(habit, count),
                             canCheckIn: canCheckIn,
-                            onTapCard: () =>
-                                context.push(Routes.editHabit(habit.id)),
+                            onTapCard: () => showCheckInDetailSheet(
+                              context,
+                              habit: habit,
+                              date: selectedKey,
+                              checkIn: checkIn,
+                              canEditRecord: canCheckIn,
+                              save: ({score, mood, note}) => ref
+                                  .read(checkInRepositoryProvider)
+                                  .saveDetail(
+                                    habit.id,
+                                    selectedKey,
+                                    score: score,
+                                    mood: mood,
+                                    note: note,
+                                  ),
+                              editHabit: () =>
+                                  context.push(Routes.editHabit(habit.id)),
+                            ),
                             onTapCheck: () => _onTapCheck(
                               context,
                               habit: habit,
@@ -193,12 +214,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                             ),
                             onLongPressCheck: habit.dailyTarget > 1
                                 ? () => _onLongPressCheck(
-                                      context,
-                                      habit: habit,
-                                      selectedDate: selectedDate,
-                                      currentCount: count,
-                                      canCheckIn: canCheckIn,
-                                    )
+                                    context,
+                                    habit: habit,
+                                    selectedDate: selectedDate,
+                                    currentCount: count,
+                                    canCheckIn: canCheckIn,
+                                  )
                                 : null,
                           );
                         },

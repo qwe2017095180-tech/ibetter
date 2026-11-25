@@ -123,7 +123,7 @@ void main() {
     final habitId = await seedHabit(tester);
     await pumpDetailApp(tester, habitId: habitId);
 
-    expect(find.text('iBetter'), findsOneWidget);
+    expect(find.text('轻松打卡'), findsOneWidget);
     expect(find.byType(ProjectCard), findsOneWidget);
     expect(find.text('早起阅读'), findsOneWidget);
     expect(find.text('每天读二十页'), findsOneWidget);

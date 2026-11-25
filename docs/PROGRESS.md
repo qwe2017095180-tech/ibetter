@@ -72,5 +72,7 @@ Flutter binary: `export PATH="$HOME/development/flutter/bin:$PATH"`
 - iBetter sync & UI: implemented `QingsongClient`, `QingsongConfig`/`FileQingsongConfigStore`, `QingsongSyncService`, and Riverpod providers (`lib/features/qingsong/`), HomePage「今日日程」section +「添加今日日程」bottom sheet (`lib/features/home/widgets/{agenda_section,add_agenda_sheet}.dart`), MorePage pairing/sync settings (`lib/features/more/more_page.dart`), and Android `network_security_config.xml` for LAN cleartext HTTP.
 - Verified: `flutter analyze` (0 issues), `flutter test` (98/98 passed including unit, DB migration, widget, and E2E tests), and live Node `bridge.mjs` ↔ Dart `QingsongSyncService` round-trip test.
 
-
-
+## 品牌统一与打卡详情
+- 轻松打卡 1.2.0+3 更新 Android、iOS、Web 的显示名和启动图标，Android 应用 ID 与 SQLite 文件名沿用已有值。
+- 今日卡片打开评分、心情与备注记录，仍可从详情编辑项目；取消打卡时保留已有记录内容。
+- 轻松日程 1.3.0 的改动在独立仓库，包含按日查看、直接添加和 GitHub Releases 应用内更新。

@@ -1,11 +1,11 @@
 {
-    "name": "ibetter",
-    "short_name": "ibetter",
+    "name": "轻松打卡",
+    "short_name": "轻松打卡",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#3458CB",
+    "theme_color": "#3458CB",
+    "description": "习惯养成与打卡",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
