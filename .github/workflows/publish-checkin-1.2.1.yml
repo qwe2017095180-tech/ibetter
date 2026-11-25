@@ -1,0 +1,66 @@
+name: Verify and publish 轻松打卡 1.2.1
+on:
+  push:
+    branches: [release/qingsong-checkin-1.2.1]
+jobs:
+  verify:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 7a1fa5041941bb40c1bd4eb8299be495c7457e3e
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.50.1'
+          channel: stable
+          cache: true
+      - name: Verify Flutter UI and behavior
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
+  release:
+    needs: verify
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: v1.2.1
+      RELEASE_COMMIT: 7a1fa5041941bb40c1bd4eb8299be495c7457e3e
+      APK_NAME: qingsong-checkin-v1.2.1-arm64.apk
+      APK_SHA256: 8417aa478480121cf1bf2e28fa94135bf5928917dcc808a2d7dda80d52e8acc3
+      PREVIOUS_SHA256: 355292eed5c5970e00e5095f7b65475ca98dfd3b3d48f541304936cab68bf773
+      CERT_SHA256: 370a943ccbe15dfd90fc736293f86cc08d1cca8d4124ab47005cc50c0aabf040
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Reconstruct and verify signed APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          grep -Fx 'version: 1.2.1+4' pubspec.yaml
+          mkdir -p "$RUNNER_TEMP/checkin"
+          gh release download v1.2.0 --repo "$GITHUB_REPOSITORY" --pattern qingsong-checkin-v1.2.0-arm64.apk --dir "$RUNNER_TEMP/checkin"
+          cat release-staging/android-1.2.1/part-* | gzip -dc > "$RUNNER_TEMP/checkin/checkin.patch"
+          cd "$RUNNER_TEMP/checkin"
+          mv qingsong-checkin-v1.2.0-arm64.apk checkin.apk
+          printf '%s  %s\n' "$PREVIOUS_SHA256" checkin.apk | sha256sum --check -
+          git apply checkin.patch
+          mv checkin.apk "$APK_NAME"
+          printf '%s  %s\n' "$APK_SHA256" "$APK_NAME" | sha256sum --check -
+          signed_tool="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+          test -x "$signed_tool"
+          actual_cert="$("$signed_tool" verify --min-sdk-version 24 --print-certs "$APK_NAME" | sed -n 's/.*certificate SHA-256 digest: //p')"
+          test "$actual_cert" = "$CERT_SHA256"
+      - name: Publish stable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$RELEASE_TAG" "$RUNNER_TEMP/checkin/$APK_NAME" \
+            --repo "$GITHUB_REPOSITORY" --target "$RELEASE_COMMIT" \
+            --title "轻松打卡 $RELEASE_TAG" \
+            --notes "恢复原版暖灰背景、蓝色标题、浅紫打卡卡片和点击卡片编辑项目的操作。保留轻松打卡名称与新启动图标。长按卡片可查看和编辑当日评分、心情与备注。"
