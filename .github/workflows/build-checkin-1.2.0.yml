@@ -1,0 +1,37 @@
+name: Build 轻松打卡 1.2.0
+on:
+  push:
+    branches: [release/qingsong-checkin-1.2.0-build]
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 3c0ff443d4adec29536ab0ff4e962709061ef0de
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.50.1'
+          channel: stable
+          cache: true
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Analyze and test
+        run: |
+          flutter analyze
+          flutter test
+      - name: Build ARM64 APK for signing
+        run: |
+          flutter build apk --release --target-platform android-arm64 --dart-define=UPDATE_REPO=${{ github.repository }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qingsong-checkin-1.2.0-for-signing
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
