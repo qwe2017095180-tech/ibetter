@@ -65,5 +65,12 @@ Flutter binary: `export PATH="$HOME/development/flutter/bin:$PATH"`
 - Release automation: `scripts/release.sh` and `.github/workflows/release-apk.yml`.
 - Tests: `test/features/updates/update_test.dart`.
 
+## Phase 4 Additions (Qingsong-Rili Integration & Today Agenda) — done
+- Architecture doc: `docs/QINGSONG_INTEGRATION.md` covering LAN bridge protocol (`/bridge/v1/*`), SQLite schema v2, bidirectional push-then-pull sync rules, and UI design.
+- PC side (`/Users/jvok8721/Desktop/study/wechat-schedule`): added opt-in LAN bridge server (`lib/bridge.mjs` on port `7790` with 8-char Bearer token & rate limit), mounted `/api/bridge/*` and lifecycle hooks in `server.mjs`, added `bridgeEnabled`/`bridgeToken` defaults in `lib/store.mjs`, and created `public/bridge.html` pairing page (linked from `public/index.html`).
+- iBetter data & domain: added `AgendaItem`/`AgendaDraft` (`lib/domain/models/agenda_item.dart`), `QingsongNotice` (`lib/domain/models/qingsong_notice.dart`), pure sync rules (`lib/domain/services/agenda_sync_rules.dart`), Drift `AgendaItems` table + schema v1→v2 migration (`lib/core/db/`), and `AgendaRepository`/`DriftAgendaRepository` (`lib/data/repositories/`).
+- iBetter sync & UI: implemented `QingsongClient`, `QingsongConfig`/`FileQingsongConfigStore`, `QingsongSyncService`, and Riverpod providers (`lib/features/qingsong/`), HomePage「今日日程」section +「添加今日日程」bottom sheet (`lib/features/home/widgets/{agenda_section,add_agenda_sheet}.dart`), MorePage pairing/sync settings (`lib/features/more/more_page.dart`), and Android `network_security_config.xml` for LAN cleartext HTTP.
+- Verified: `flutter analyze` (0 issues), `flutter test` (98/98 passed including unit, DB migration, widget, and E2E tests), and live Node `bridge.mjs` ↔ Dart `QingsongSyncService` round-trip test.
+
 
 

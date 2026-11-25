@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/repositories/drift_agenda_repository.dart';
 import '../data/repositories/drift_repositories.dart';
 import '../data/repositories/repositories.dart';
 import '../domain/date_key.dart' as dk;
@@ -25,6 +26,8 @@ final checkInRepositoryProvider =
     Provider<CheckInRepository>((ref) => DriftCheckInRepository(ref.watch(databaseProvider)));
 final reminderRepositoryProvider =
     Provider<ReminderRepository>((ref) => DriftReminderRepository(ref.watch(databaseProvider)));
+final agendaRepositoryProvider =
+    Provider<AgendaRepository>((ref) => DriftAgendaRepository(ref.watch(databaseProvider)));
 
 final scheduleServiceProvider = Provider((ref) => const ScheduleService());
 final streakServiceProvider = Provider((ref) => const StreakService());

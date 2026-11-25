@@ -357,6 +357,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('创建第一个项目'), findsOneWidget);
+    await tester.ensureVisible(find.text('创建第一个项目'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('创建第一个项目'));
     await tester.pumpAndSettle();
     expect(find.text('Editor New'), findsOneWidget);

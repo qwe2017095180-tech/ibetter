@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
 import '../../domain/date_key.dart' as dk;
+import '../../domain/models/agenda_item.dart';
 import '../../domain/models/check_in.dart';
 
 /// Inclusive `yyyy-MM-dd` range key with structural equality for `.family`.
@@ -81,4 +82,10 @@ final checkInsByDateProvider =
 final checkInsInRangeProvider =
     StreamProvider.family<List<CheckIn>, DateRangeKey>((ref, range) {
   return ref.watch(checkInRepositoryProvider).watchRange(range.from, range.to);
+});
+
+/// Agenda items (今日日程) for a single `yyyy-MM-dd` date.
+final agendaByDateProvider =
+    StreamProvider.family<List<AgendaItem>, String>((ref, date) {
+  return ref.watch(agendaRepositoryProvider).watchByDate(date);
 });

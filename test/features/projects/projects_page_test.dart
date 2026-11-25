@@ -217,7 +217,7 @@ void main() {
       find.descendant(of: monthlyCard, matching: find.byType(LinearProgressIndicator)),
       findsNothing,
     );
-    expect(env.db.schemaVersion, 1);
+    expect(env.db.schemaVersion, 2);
   });
 
   testWidgets('toggling switch pauses and resumes habit and updates notifications', (tester) async {

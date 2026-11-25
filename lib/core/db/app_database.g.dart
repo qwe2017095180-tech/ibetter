@@ -1710,12 +1710,899 @@ class RemindersCompanion extends UpdateCompanion<ReminderRow> {
   }
 }
 
+class $AgendaItemsTable extends AgendaItems
+    with TableInfo<$AgendaItemsTable, AgendaRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AgendaItemsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<String> date = GeneratedColumn<String>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _minutesOfDayMeta = const VerificationMeta(
+    'minutesOfDay',
+  );
+  @override
+  late final GeneratedColumn<int> minutesOfDay = GeneratedColumn<int>(
+    'minutes_of_day',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('日程'),
+  );
+  static const VerificationMeta _originMeta = const VerificationMeta('origin');
+  @override
+  late final GeneratedColumn<String> origin = GeneratedColumn<String>(
+    'origin',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _isDoneMeta = const VerificationMeta('isDone');
+  @override
+  late final GeneratedColumn<bool> isDone = GeneratedColumn<bool>(
+    'is_done',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_done" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<int> source = GeneratedColumn<int>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _clientIdMeta = const VerificationMeta(
+    'clientId',
+  );
+  @override
+  late final GeneratedColumn<String> clientId = GeneratedColumn<String>(
+    'client_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _remoteIdMeta = const VerificationMeta(
+    'remoteId',
+  );
+  @override
+  late final GeneratedColumn<String> remoteId = GeneratedColumn<String>(
+    'remote_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _syncToRemoteMeta = const VerificationMeta(
+    'syncToRemote',
+  );
+  @override
+  late final GeneratedColumn<bool> syncToRemote = GeneratedColumn<bool>(
+    'sync_to_remote',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("sync_to_remote" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _dirtyMeta = const VerificationMeta('dirty');
+  @override
+  late final GeneratedColumn<bool> dirty = GeneratedColumn<bool>(
+    'dirty',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("dirty" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isHiddenMeta = const VerificationMeta(
+    'isHidden',
+  );
+  @override
+  late final GeneratedColumn<bool> isHidden = GeneratedColumn<bool>(
+    'is_hidden',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_hidden" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    date,
+    minutesOfDay,
+    title,
+    note,
+    category,
+    origin,
+    isDone,
+    source,
+    clientId,
+    remoteId,
+    syncToRemote,
+    dirty,
+    isHidden,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'agenda_items';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AgendaRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('minutes_of_day')) {
+      context.handle(
+        _minutesOfDayMeta,
+        minutesOfDay.isAcceptableOrUnknown(
+          data['minutes_of_day']!,
+          _minutesOfDayMeta,
+        ),
+      );
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    }
+    if (data.containsKey('origin')) {
+      context.handle(
+        _originMeta,
+        origin.isAcceptableOrUnknown(data['origin']!, _originMeta),
+      );
+    }
+    if (data.containsKey('is_done')) {
+      context.handle(
+        _isDoneMeta,
+        isDone.isAcceptableOrUnknown(data['is_done']!, _isDoneMeta),
+      );
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    }
+    if (data.containsKey('client_id')) {
+      context.handle(
+        _clientIdMeta,
+        clientId.isAcceptableOrUnknown(data['client_id']!, _clientIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_clientIdMeta);
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(
+        _remoteIdMeta,
+        remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
+      );
+    }
+    if (data.containsKey('sync_to_remote')) {
+      context.handle(
+        _syncToRemoteMeta,
+        syncToRemote.isAcceptableOrUnknown(
+          data['sync_to_remote']!,
+          _syncToRemoteMeta,
+        ),
+      );
+    }
+    if (data.containsKey('dirty')) {
+      context.handle(
+        _dirtyMeta,
+        dirty.isAcceptableOrUnknown(data['dirty']!, _dirtyMeta),
+      );
+    }
+    if (data.containsKey('is_hidden')) {
+      context.handle(
+        _isHiddenMeta,
+        isHidden.isAcceptableOrUnknown(data['is_hidden']!, _isHiddenMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AgendaRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AgendaRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}date'],
+      )!,
+      minutesOfDay: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}minutes_of_day'],
+      ),
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      )!,
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      )!,
+      origin: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}origin'],
+      )!,
+      isDone: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_done'],
+      )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}source'],
+      )!,
+      clientId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}client_id'],
+      )!,
+      remoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remote_id'],
+      ),
+      syncToRemote: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}sync_to_remote'],
+      )!,
+      dirty: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}dirty'],
+      )!,
+      isHidden: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_hidden'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AgendaItemsTable createAlias(String alias) {
+    return $AgendaItemsTable(attachedDatabase, alias);
+  }
+}
+
+class AgendaRow extends DataClass implements Insertable<AgendaRow> {
+  final int id;
+  final String date;
+  final int? minutesOfDay;
+  final String title;
+  final String note;
+  final String category;
+  final String origin;
+  final bool isDone;
+
+  /// 0 = iBetter 本地新建，1 = 来自轻松日程。
+  final int source;
+  final String clientId;
+  final String? remoteId;
+  final bool syncToRemote;
+  final bool dirty;
+
+  /// 已关联远端的条目在手机上删除时只隐藏，避免下次同步又被拉回来。
+  final bool isHidden;
+  final int createdAt;
+  final int updatedAt;
+  const AgendaRow({
+    required this.id,
+    required this.date,
+    this.minutesOfDay,
+    required this.title,
+    required this.note,
+    required this.category,
+    required this.origin,
+    required this.isDone,
+    required this.source,
+    required this.clientId,
+    this.remoteId,
+    required this.syncToRemote,
+    required this.dirty,
+    required this.isHidden,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['date'] = Variable<String>(date);
+    if (!nullToAbsent || minutesOfDay != null) {
+      map['minutes_of_day'] = Variable<int>(minutesOfDay);
+    }
+    map['title'] = Variable<String>(title);
+    map['note'] = Variable<String>(note);
+    map['category'] = Variable<String>(category);
+    map['origin'] = Variable<String>(origin);
+    map['is_done'] = Variable<bool>(isDone);
+    map['source'] = Variable<int>(source);
+    map['client_id'] = Variable<String>(clientId);
+    if (!nullToAbsent || remoteId != null) {
+      map['remote_id'] = Variable<String>(remoteId);
+    }
+    map['sync_to_remote'] = Variable<bool>(syncToRemote);
+    map['dirty'] = Variable<bool>(dirty);
+    map['is_hidden'] = Variable<bool>(isHidden);
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+
+  AgendaItemsCompanion toCompanion(bool nullToAbsent) {
+    return AgendaItemsCompanion(
+      id: Value(id),
+      date: Value(date),
+      minutesOfDay: minutesOfDay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(minutesOfDay),
+      title: Value(title),
+      note: Value(note),
+      category: Value(category),
+      origin: Value(origin),
+      isDone: Value(isDone),
+      source: Value(source),
+      clientId: Value(clientId),
+      remoteId: remoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteId),
+      syncToRemote: Value(syncToRemote),
+      dirty: Value(dirty),
+      isHidden: Value(isHidden),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AgendaRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AgendaRow(
+      id: serializer.fromJson<int>(json['id']),
+      date: serializer.fromJson<String>(json['date']),
+      minutesOfDay: serializer.fromJson<int?>(json['minutesOfDay']),
+      title: serializer.fromJson<String>(json['title']),
+      note: serializer.fromJson<String>(json['note']),
+      category: serializer.fromJson<String>(json['category']),
+      origin: serializer.fromJson<String>(json['origin']),
+      isDone: serializer.fromJson<bool>(json['isDone']),
+      source: serializer.fromJson<int>(json['source']),
+      clientId: serializer.fromJson<String>(json['clientId']),
+      remoteId: serializer.fromJson<String?>(json['remoteId']),
+      syncToRemote: serializer.fromJson<bool>(json['syncToRemote']),
+      dirty: serializer.fromJson<bool>(json['dirty']),
+      isHidden: serializer.fromJson<bool>(json['isHidden']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'date': serializer.toJson<String>(date),
+      'minutesOfDay': serializer.toJson<int?>(minutesOfDay),
+      'title': serializer.toJson<String>(title),
+      'note': serializer.toJson<String>(note),
+      'category': serializer.toJson<String>(category),
+      'origin': serializer.toJson<String>(origin),
+      'isDone': serializer.toJson<bool>(isDone),
+      'source': serializer.toJson<int>(source),
+      'clientId': serializer.toJson<String>(clientId),
+      'remoteId': serializer.toJson<String?>(remoteId),
+      'syncToRemote': serializer.toJson<bool>(syncToRemote),
+      'dirty': serializer.toJson<bool>(dirty),
+      'isHidden': serializer.toJson<bool>(isHidden),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  AgendaRow copyWith({
+    int? id,
+    String? date,
+    Value<int?> minutesOfDay = const Value.absent(),
+    String? title,
+    String? note,
+    String? category,
+    String? origin,
+    bool? isDone,
+    int? source,
+    String? clientId,
+    Value<String?> remoteId = const Value.absent(),
+    bool? syncToRemote,
+    bool? dirty,
+    bool? isHidden,
+    int? createdAt,
+    int? updatedAt,
+  }) => AgendaRow(
+    id: id ?? this.id,
+    date: date ?? this.date,
+    minutesOfDay: minutesOfDay.present ? minutesOfDay.value : this.minutesOfDay,
+    title: title ?? this.title,
+    note: note ?? this.note,
+    category: category ?? this.category,
+    origin: origin ?? this.origin,
+    isDone: isDone ?? this.isDone,
+    source: source ?? this.source,
+    clientId: clientId ?? this.clientId,
+    remoteId: remoteId.present ? remoteId.value : this.remoteId,
+    syncToRemote: syncToRemote ?? this.syncToRemote,
+    dirty: dirty ?? this.dirty,
+    isHidden: isHidden ?? this.isHidden,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  AgendaRow copyWithCompanion(AgendaItemsCompanion data) {
+    return AgendaRow(
+      id: data.id.present ? data.id.value : this.id,
+      date: data.date.present ? data.date.value : this.date,
+      minutesOfDay: data.minutesOfDay.present
+          ? data.minutesOfDay.value
+          : this.minutesOfDay,
+      title: data.title.present ? data.title.value : this.title,
+      note: data.note.present ? data.note.value : this.note,
+      category: data.category.present ? data.category.value : this.category,
+      origin: data.origin.present ? data.origin.value : this.origin,
+      isDone: data.isDone.present ? data.isDone.value : this.isDone,
+      source: data.source.present ? data.source.value : this.source,
+      clientId: data.clientId.present ? data.clientId.value : this.clientId,
+      remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
+      syncToRemote: data.syncToRemote.present
+          ? data.syncToRemote.value
+          : this.syncToRemote,
+      dirty: data.dirty.present ? data.dirty.value : this.dirty,
+      isHidden: data.isHidden.present ? data.isHidden.value : this.isHidden,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AgendaRow(')
+          ..write('id: $id, ')
+          ..write('date: $date, ')
+          ..write('minutesOfDay: $minutesOfDay, ')
+          ..write('title: $title, ')
+          ..write('note: $note, ')
+          ..write('category: $category, ')
+          ..write('origin: $origin, ')
+          ..write('isDone: $isDone, ')
+          ..write('source: $source, ')
+          ..write('clientId: $clientId, ')
+          ..write('remoteId: $remoteId, ')
+          ..write('syncToRemote: $syncToRemote, ')
+          ..write('dirty: $dirty, ')
+          ..write('isHidden: $isHidden, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    date,
+    minutesOfDay,
+    title,
+    note,
+    category,
+    origin,
+    isDone,
+    source,
+    clientId,
+    remoteId,
+    syncToRemote,
+    dirty,
+    isHidden,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AgendaRow &&
+          other.id == this.id &&
+          other.date == this.date &&
+          other.minutesOfDay == this.minutesOfDay &&
+          other.title == this.title &&
+          other.note == this.note &&
+          other.category == this.category &&
+          other.origin == this.origin &&
+          other.isDone == this.isDone &&
+          other.source == this.source &&
+          other.clientId == this.clientId &&
+          other.remoteId == this.remoteId &&
+          other.syncToRemote == this.syncToRemote &&
+          other.dirty == this.dirty &&
+          other.isHidden == this.isHidden &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AgendaItemsCompanion extends UpdateCompanion<AgendaRow> {
+  final Value<int> id;
+  final Value<String> date;
+  final Value<int?> minutesOfDay;
+  final Value<String> title;
+  final Value<String> note;
+  final Value<String> category;
+  final Value<String> origin;
+  final Value<bool> isDone;
+  final Value<int> source;
+  final Value<String> clientId;
+  final Value<String?> remoteId;
+  final Value<bool> syncToRemote;
+  final Value<bool> dirty;
+  final Value<bool> isHidden;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  const AgendaItemsCompanion({
+    this.id = const Value.absent(),
+    this.date = const Value.absent(),
+    this.minutesOfDay = const Value.absent(),
+    this.title = const Value.absent(),
+    this.note = const Value.absent(),
+    this.category = const Value.absent(),
+    this.origin = const Value.absent(),
+    this.isDone = const Value.absent(),
+    this.source = const Value.absent(),
+    this.clientId = const Value.absent(),
+    this.remoteId = const Value.absent(),
+    this.syncToRemote = const Value.absent(),
+    this.dirty = const Value.absent(),
+    this.isHidden = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  AgendaItemsCompanion.insert({
+    this.id = const Value.absent(),
+    required String date,
+    this.minutesOfDay = const Value.absent(),
+    required String title,
+    this.note = const Value.absent(),
+    this.category = const Value.absent(),
+    this.origin = const Value.absent(),
+    this.isDone = const Value.absent(),
+    this.source = const Value.absent(),
+    required String clientId,
+    this.remoteId = const Value.absent(),
+    this.syncToRemote = const Value.absent(),
+    this.dirty = const Value.absent(),
+    this.isHidden = const Value.absent(),
+    required int createdAt,
+    required int updatedAt,
+  }) : date = Value(date),
+       title = Value(title),
+       clientId = Value(clientId),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<AgendaRow> custom({
+    Expression<int>? id,
+    Expression<String>? date,
+    Expression<int>? minutesOfDay,
+    Expression<String>? title,
+    Expression<String>? note,
+    Expression<String>? category,
+    Expression<String>? origin,
+    Expression<bool>? isDone,
+    Expression<int>? source,
+    Expression<String>? clientId,
+    Expression<String>? remoteId,
+    Expression<bool>? syncToRemote,
+    Expression<bool>? dirty,
+    Expression<bool>? isHidden,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (date != null) 'date': date,
+      if (minutesOfDay != null) 'minutes_of_day': minutesOfDay,
+      if (title != null) 'title': title,
+      if (note != null) 'note': note,
+      if (category != null) 'category': category,
+      if (origin != null) 'origin': origin,
+      if (isDone != null) 'is_done': isDone,
+      if (source != null) 'source': source,
+      if (clientId != null) 'client_id': clientId,
+      if (remoteId != null) 'remote_id': remoteId,
+      if (syncToRemote != null) 'sync_to_remote': syncToRemote,
+      if (dirty != null) 'dirty': dirty,
+      if (isHidden != null) 'is_hidden': isHidden,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  AgendaItemsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? date,
+    Value<int?>? minutesOfDay,
+    Value<String>? title,
+    Value<String>? note,
+    Value<String>? category,
+    Value<String>? origin,
+    Value<bool>? isDone,
+    Value<int>? source,
+    Value<String>? clientId,
+    Value<String?>? remoteId,
+    Value<bool>? syncToRemote,
+    Value<bool>? dirty,
+    Value<bool>? isHidden,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
+  }) {
+    return AgendaItemsCompanion(
+      id: id ?? this.id,
+      date: date ?? this.date,
+      minutesOfDay: minutesOfDay ?? this.minutesOfDay,
+      title: title ?? this.title,
+      note: note ?? this.note,
+      category: category ?? this.category,
+      origin: origin ?? this.origin,
+      isDone: isDone ?? this.isDone,
+      source: source ?? this.source,
+      clientId: clientId ?? this.clientId,
+      remoteId: remoteId ?? this.remoteId,
+      syncToRemote: syncToRemote ?? this.syncToRemote,
+      dirty: dirty ?? this.dirty,
+      isHidden: isHidden ?? this.isHidden,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<String>(date.value);
+    }
+    if (minutesOfDay.present) {
+      map['minutes_of_day'] = Variable<int>(minutesOfDay.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (origin.present) {
+      map['origin'] = Variable<String>(origin.value);
+    }
+    if (isDone.present) {
+      map['is_done'] = Variable<bool>(isDone.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<int>(source.value);
+    }
+    if (clientId.present) {
+      map['client_id'] = Variable<String>(clientId.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<String>(remoteId.value);
+    }
+    if (syncToRemote.present) {
+      map['sync_to_remote'] = Variable<bool>(syncToRemote.value);
+    }
+    if (dirty.present) {
+      map['dirty'] = Variable<bool>(dirty.value);
+    }
+    if (isHidden.present) {
+      map['is_hidden'] = Variable<bool>(isHidden.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AgendaItemsCompanion(')
+          ..write('id: $id, ')
+          ..write('date: $date, ')
+          ..write('minutesOfDay: $minutesOfDay, ')
+          ..write('title: $title, ')
+          ..write('note: $note, ')
+          ..write('category: $category, ')
+          ..write('origin: $origin, ')
+          ..write('isDone: $isDone, ')
+          ..write('source: $source, ')
+          ..write('clientId: $clientId, ')
+          ..write('remoteId: $remoteId, ')
+          ..write('syncToRemote: $syncToRemote, ')
+          ..write('dirty: $dirty, ')
+          ..write('isHidden: $isHidden, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $HabitsTable habits = $HabitsTable(this);
   late final $CheckInsTable checkIns = $CheckInsTable(this);
   late final $RemindersTable reminders = $RemindersTable(this);
+  late final $AgendaItemsTable agendaItems = $AgendaItemsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1724,6 +2611,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     habits,
     checkIns,
     reminders,
+    agendaItems,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -3007,6 +3895,419 @@ typedef $$RemindersTableProcessedTableManager =
       ReminderRow,
       PrefetchHooks Function({bool habitId})
     >;
+typedef $$AgendaItemsTableCreateCompanionBuilder =
+    AgendaItemsCompanion Function({
+      Value<int> id,
+      required String date,
+      Value<int?> minutesOfDay,
+      required String title,
+      Value<String> note,
+      Value<String> category,
+      Value<String> origin,
+      Value<bool> isDone,
+      Value<int> source,
+      required String clientId,
+      Value<String?> remoteId,
+      Value<bool> syncToRemote,
+      Value<bool> dirty,
+      Value<bool> isHidden,
+      required int createdAt,
+      required int updatedAt,
+    });
+typedef $$AgendaItemsTableUpdateCompanionBuilder =
+    AgendaItemsCompanion Function({
+      Value<int> id,
+      Value<String> date,
+      Value<int?> minutesOfDay,
+      Value<String> title,
+      Value<String> note,
+      Value<String> category,
+      Value<String> origin,
+      Value<bool> isDone,
+      Value<int> source,
+      Value<String> clientId,
+      Value<String?> remoteId,
+      Value<bool> syncToRemote,
+      Value<bool> dirty,
+      Value<bool> isHidden,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+    });
+
+class $$AgendaItemsTableFilterComposer
+    extends Composer<_$AppDatabase, $AgendaItemsTable> {
+  $$AgendaItemsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get minutesOfDay => $composableBuilder(
+    column: $table.minutesOfDay,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get origin => $composableBuilder(
+    column: $table.origin,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDone => $composableBuilder(
+    column: $table.isDone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clientId => $composableBuilder(
+    column: $table.clientId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get syncToRemote => $composableBuilder(
+    column: $table.syncToRemote,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get dirty => $composableBuilder(
+    column: $table.dirty,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isHidden => $composableBuilder(
+    column: $table.isHidden,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AgendaItemsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AgendaItemsTable> {
+  $$AgendaItemsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get minutesOfDay => $composableBuilder(
+    column: $table.minutesOfDay,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get origin => $composableBuilder(
+    column: $table.origin,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDone => $composableBuilder(
+    column: $table.isDone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clientId => $composableBuilder(
+    column: $table.clientId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get syncToRemote => $composableBuilder(
+    column: $table.syncToRemote,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get dirty => $composableBuilder(
+    column: $table.dirty,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isHidden => $composableBuilder(
+    column: $table.isHidden,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AgendaItemsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AgendaItemsTable> {
+  $$AgendaItemsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<int> get minutesOfDay => $composableBuilder(
+    column: $table.minutesOfDay,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<String> get origin =>
+      $composableBuilder(column: $table.origin, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDone =>
+      $composableBuilder(column: $table.isDone, builder: (column) => column);
+
+  GeneratedColumn<int> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get clientId =>
+      $composableBuilder(column: $table.clientId, builder: (column) => column);
+
+  GeneratedColumn<String> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
+
+  GeneratedColumn<bool> get syncToRemote => $composableBuilder(
+    column: $table.syncToRemote,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get dirty =>
+      $composableBuilder(column: $table.dirty, builder: (column) => column);
+
+  GeneratedColumn<bool> get isHidden =>
+      $composableBuilder(column: $table.isHidden, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$AgendaItemsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AgendaItemsTable,
+          AgendaRow,
+          $$AgendaItemsTableFilterComposer,
+          $$AgendaItemsTableOrderingComposer,
+          $$AgendaItemsTableAnnotationComposer,
+          $$AgendaItemsTableCreateCompanionBuilder,
+          $$AgendaItemsTableUpdateCompanionBuilder,
+          (
+            AgendaRow,
+            BaseReferences<_$AppDatabase, $AgendaItemsTable, AgendaRow>,
+          ),
+          AgendaRow,
+          PrefetchHooks Function()
+        > {
+  $$AgendaItemsTableTableManager(_$AppDatabase db, $AgendaItemsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AgendaItemsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AgendaItemsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AgendaItemsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> date = const Value.absent(),
+                Value<int?> minutesOfDay = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> note = const Value.absent(),
+                Value<String> category = const Value.absent(),
+                Value<String> origin = const Value.absent(),
+                Value<bool> isDone = const Value.absent(),
+                Value<int> source = const Value.absent(),
+                Value<String> clientId = const Value.absent(),
+                Value<String?> remoteId = const Value.absent(),
+                Value<bool> syncToRemote = const Value.absent(),
+                Value<bool> dirty = const Value.absent(),
+                Value<bool> isHidden = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+              }) => AgendaItemsCompanion(
+                id: id,
+                date: date,
+                minutesOfDay: minutesOfDay,
+                title: title,
+                note: note,
+                category: category,
+                origin: origin,
+                isDone: isDone,
+                source: source,
+                clientId: clientId,
+                remoteId: remoteId,
+                syncToRemote: syncToRemote,
+                dirty: dirty,
+                isHidden: isHidden,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String date,
+                Value<int?> minutesOfDay = const Value.absent(),
+                required String title,
+                Value<String> note = const Value.absent(),
+                Value<String> category = const Value.absent(),
+                Value<String> origin = const Value.absent(),
+                Value<bool> isDone = const Value.absent(),
+                Value<int> source = const Value.absent(),
+                required String clientId,
+                Value<String?> remoteId = const Value.absent(),
+                Value<bool> syncToRemote = const Value.absent(),
+                Value<bool> dirty = const Value.absent(),
+                Value<bool> isHidden = const Value.absent(),
+                required int createdAt,
+                required int updatedAt,
+              }) => AgendaItemsCompanion.insert(
+                id: id,
+                date: date,
+                minutesOfDay: minutesOfDay,
+                title: title,
+                note: note,
+                category: category,
+                origin: origin,
+                isDone: isDone,
+                source: source,
+                clientId: clientId,
+                remoteId: remoteId,
+                syncToRemote: syncToRemote,
+                dirty: dirty,
+                isHidden: isHidden,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$AgendaItemsTable, AgendaRow>(table),
+                  BaseReferences<_$AppDatabase, $AgendaItemsTable, AgendaRow>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AgendaItemsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AgendaItemsTable,
+      AgendaRow,
+      $$AgendaItemsTableFilterComposer,
+      $$AgendaItemsTableOrderingComposer,
+      $$AgendaItemsTableAnnotationComposer,
+      $$AgendaItemsTableCreateCompanionBuilder,
+      $$AgendaItemsTableUpdateCompanionBuilder,
+      (AgendaRow, BaseReferences<_$AppDatabase, $AgendaItemsTable, AgendaRow>),
+      AgendaRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3017,4 +4318,6 @@ class $AppDatabaseManager {
       $$CheckInsTableTableManager(_db, _db.checkIns);
   $$RemindersTableTableManager get reminders =>
       $$RemindersTableTableManager(_db, _db.reminders);
+  $$AgendaItemsTableTableManager get agendaItems =>
+      $$AgendaItemsTableTableManager(_db, _db.agendaItems);
 }
