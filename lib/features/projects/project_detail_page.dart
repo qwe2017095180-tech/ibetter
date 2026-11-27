@@ -183,6 +183,7 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                 context,
                 habit: loadedHabit,
                 stats: ref.read(habitStatsProvider(loadedHabit.id)),
+                onShared: () => ref.read(appPrefsProvider.notifier).recordShare(today),
               ),
             ),
     );

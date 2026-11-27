@@ -10,14 +10,17 @@ import '../../../domain/date_key.dart' as dk;
 import '../../../domain/models/check_in.dart';
 import '../../../domain/models/habit.dart';
 import '../../../domain/services/achievement_service.dart';
+import '../home/widgets/perfect_day_dialog.dart';
 import '../icon_picker/icon_registry.dart';
+import 'widgets/achievement_badge.dart';
 import 'widgets/achievement_list_sheet.dart';
+import 'widgets/achievement_unlock_dialog.dart';
 import 'widgets/achievement_utils.dart';
 import 'widgets/report_card_sheet.dart';
 import 'widgets/weekly_chart.dart';
 
 /// "我的成就" tab displaying KPI summary, yearly progress, recent heatmap,
-/// interactive weekly chart, and unlocked achievements.
+/// interactive weekly chart, and categorized milestone achievement cards.
 class AchievementsPage extends ConsumerStatefulWidget {
   const AchievementsPage({super.key});
 
@@ -27,6 +30,43 @@ class AchievementsPage extends ConsumerStatefulWidget {
 
 class _AchievementsPageState extends ConsumerState<AchievementsPage> {
   int? _selectedYear;
+  int _lastScheduledSeenCount = -1;
+
+  Future<void> _openAchievementDetail(
+    BuildContext context,
+    AchievementItem item, {
+    required List<Habit> habits,
+    required List<CheckIn> checkIns,
+  }) async {
+    if (!item.unlocked) return;
+    if (item.id == 'perfect_day' && item.latestDate != null) {
+      final targetKey = item.latestDate!;
+      final targetDate = dk.parseDateKey(targetKey);
+      final scheduleService = ref.read(scheduleServiceProvider);
+      final statsService = ref.read(statsServiceProvider);
+      final countByHabit = <int, int>{
+        for (final c in checkIns)
+          if (c.date == targetKey) c.habitId: c.count,
+      };
+      final completedHabits = <PerfectDayHabitItem>[
+        for (final h in habits)
+          if (h.isActive &&
+              scheduleService.isScheduledOn(h, targetDate) &&
+              scheduleService.isDone(h, countByHabit[h.id] ?? 0))
+            PerfectDayHabitItem(
+              habit: h,
+              totalDays: statsService.doneDates(h, checkIns).length,
+            ),
+      ];
+      await showPerfectDayDialog(
+        context,
+        date: targetDate,
+        completedHabits: completedHabits,
+      );
+      return;
+    }
+    await showAchievementUnlockDialog(context, items: [item]);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,20 +74,36 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
     final selectedYear = (_selectedYear ?? today.year).clamp(1900, today.year);
     final habitsAsync = ref.watch(habitsProvider);
     final checkInsAsync = ref.watch(allCheckInsProvider);
+    final prefsAsync = ref.watch(appPrefsProvider);
     final achievementService = ref.watch(achievementServiceProvider);
+    final stats = ref.watch(overallStatsProvider);
 
-    final habits = habitsAsync.asData?.value;
-    final checkIns = checkInsAsync.asData?.value;
-    final OverallStats? stats = (habits != null && checkIns != null)
-        ? achievementService.compute(habits, checkIns, today: today)
-        : null;
+    final hasData = habitsAsync.hasValue && checkInsAsync.hasValue;
+    final prefs = prefsAsync.asData?.value;
+    if (hasData &&
+        prefs != null &&
+        stats.totalAchievementCount > 0 &&
+        stats.totalAchievementCount > prefs.seenAchievementCount &&
+        _lastScheduledSeenCount != stats.totalAchievementCount) {
+      final targetCount = stats.totalAchievementCount;
+      _lastScheduledSeenCount = targetCount;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(appPrefsProvider.notifier).markAchievementsSeen(targetCount);
+      });
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: _AchievementsTopBar(
-        onTapReportCard: stats == null
+        onTapReportCard: !hasData
             ? null
-            : () => showReportCardSheet(context, stats: stats, today: today),
+            : () => showReportCardSheet(
+                  context,
+                  stats: stats,
+                  today: today,
+                  onShared: () => ref.read(appPrefsProvider.notifier).recordShare(today),
+                ),
       ),
       body: _buildBody(
         context,
@@ -68,7 +124,7 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
     required AsyncValue<List<Habit>> habitsAsync,
     required AsyncValue<List<CheckIn>> checkInsAsync,
     required AchievementService achievementService,
-    required OverallStats? stats,
+    required OverallStats stats,
   }) {
     if (habitsAsync.hasError) {
       return Center(child: Text('加载失败：${habitsAsync.error}'));
@@ -76,7 +132,7 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
     if (checkInsAsync.hasError) {
       return Center(child: Text('加载失败：${checkInsAsync.error}'));
     }
-    if (stats == null) {
+    if (!habitsAsync.hasValue || !checkInsAsync.hasValue) {
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -89,6 +145,20 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
       year: selectedYear,
       today: today,
     );
+
+    final singleList = stats.byCategory(AchievementCategory.singleProject);
+    final streakList = stats.byCategory(AchievementCategory.streak);
+    final taskList = stats.byCategory(AchievementCategory.task);
+    final hiddenList = stats.byCategory(AchievementCategory.hidden);
+    final specialList = stats.byCategory(AchievementCategory.special);
+
+    final highestList = <AchievementItem>[
+      if (stats.highestSingleAchievement != null) stats.highestSingleAchievement!,
+      if (stats.highestStreakAchievement != null) stats.highestStreakAchievement!,
+    ];
+
+    void handleTap(AchievementItem item) =>
+        _openAchievementDetail(context, item, habits: habits, checkIns: checkIns);
 
     return ListView(
       padding: const EdgeInsets.only(bottom: 24),
@@ -110,7 +180,61 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
         _LatestAchievementCard(
           today: today,
           latest: stats.latestAchievement,
-          onTap: () => showAchievementsSheet(context, stats: stats, today: today),
+          onTapItem: handleTap,
+        ),
+        if (highestList.isNotEmpty)
+          _AchievementSectionCard(
+            key: const ValueKey('achievement_section_highest'),
+            sectionKey: 'highest',
+            title: '最高成就',
+            items: highestList,
+            today: today,
+            onTapItem: handleTap,
+          ),
+        _AchievementSectionCard(
+          key: const ValueKey('achievement_section_singleProject'),
+          sectionKey: 'singleProject',
+          title: '单项目成就',
+          trailingCount: '${singleList.length}',
+          items: singleList,
+          today: today,
+          onTapItem: handleTap,
+        ),
+        _AchievementSectionCard(
+          key: const ValueKey('achievement_section_streak'),
+          sectionKey: 'streak',
+          title: '连续成就',
+          trailingCount: '${streakList.length}',
+          items: streakList,
+          today: today,
+          onTapItem: handleTap,
+        ),
+        _AchievementSectionCard(
+          key: const ValueKey('achievement_section_task'),
+          sectionKey: 'task',
+          title: '任务成就',
+          trailingCount: '${taskList.length}',
+          items: taskList,
+          today: today,
+          onTapItem: handleTap,
+        ),
+        _AchievementSectionCard(
+          key: const ValueKey('achievement_section_hidden'),
+          sectionKey: 'hidden',
+          title: '隐藏成就',
+          trailingCount: '${hiddenList.length}',
+          items: hiddenList,
+          today: today,
+          onTapItem: handleTap,
+        ),
+        _AchievementSectionCard(
+          key: const ValueKey('achievement_section_special'),
+          sectionKey: 'special',
+          title: '特殊成就',
+          trailingCount: '${specialList.length}',
+          items: specialList,
+          today: today,
+          onTapItem: handleTap,
         ),
       ],
     );
@@ -390,6 +514,7 @@ class _MyRecordCard extends StatelessWidget {
           Material(
             color: Colors.transparent,
             child: InkWell(
+              key: const ValueKey('my_record_summary_row'),
               borderRadius: BorderRadius.circular(12),
               onTap: onTapSummary,
               child: Padding(
@@ -529,12 +654,12 @@ class _LatestAchievementCard extends StatelessWidget {
   const _LatestAchievementCard({
     required this.today,
     required this.latest,
-    required this.onTap,
+    required this.onTapItem,
   });
 
   final DateTime today;
   final AchievementItem? latest;
-  final VoidCallback onTap;
+  final ValueChanged<AchievementItem> onTapItem;
 
   @override
   Widget build(BuildContext context) {
@@ -545,7 +670,7 @@ class _LatestAchievementCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           key: const ValueKey('latest_achievement_card'),
-          onTap: onTap,
+          onTap: item == null ? null : () => onTapItem(item),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -558,67 +683,10 @@ class _LatestAchievementCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 if (item != null)
-                  Row(
-                    children: [
-                      Container(
-                        width: 76,
-                        height: 76,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            colors: [
-                              const Color(0xFFFFF5D6),
-                              const Color(0xFFFFF5D6).withValues(alpha: 0.25),
-                            ],
-                          ),
-                        ),
-                        child: HabitIcon(item.iconKey, size: 60),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Builder(
-                          builder: (_) {
-                            final dateLabel = formatAchievementDate(item.latestDate, today);
-                            final meta = dateLabel.isEmpty
-                                ? '获得${item.count}次'
-                                : '获得${item.count}次 | $dateLabel';
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  item.title,
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF333333),
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  item.subtitle,
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  meta,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Icon(Icons.chevron_right, color: AppColors.textHint, size: 22),
-                    ],
+                  _AchievementRowContent(
+                    item: item,
+                    today: today,
+                    badgeSize: 60,
                   )
                 else
                   Row(
@@ -644,7 +712,6 @@ class _LatestAchievementCard extends StatelessWidget {
                           style: TextStyle(fontSize: 15, color: AppColors.textSecondary),
                         ),
                       ),
-                      const Icon(Icons.chevron_right, color: AppColors.textHint, size: 22),
                     ],
                   ),
               ],
@@ -652,6 +719,143 @@ class _LatestAchievementCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _AchievementSectionCard extends StatelessWidget {
+  const _AchievementSectionCard({
+    super.key,
+    required this.sectionKey,
+    required this.title,
+    this.trailingCount,
+    required this.items,
+    required this.today,
+    required this.onTapItem,
+  });
+
+  final String sectionKey;
+  final String title;
+  final String? trailingCount;
+  final List<AchievementItem> items;
+  final DateTime today;
+  final ValueChanged<AchievementItem> onTapItem;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+            child: Row(
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontSize: 17, color: AppColors.textSecondary),
+                ),
+                if (trailingCount != null) ...[
+                  const Spacer(),
+                  Text(
+                    trailingCount!,
+                    style: const TextStyle(fontSize: 16, color: AppColors.textSecondary),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0)
+              const Divider(
+                height: 1,
+                thickness: 0.8,
+                indent: 16,
+                endIndent: 16,
+                color: AppColors.divider,
+              ),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                key: ValueKey('achievement_row_${sectionKey}_${items[i].id}'),
+                onTap: items[i].unlocked ? () => onTapItem(items[i]) : null,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  child: _AchievementRowContent(
+                    item: items[i],
+                    today: today,
+                    badgeSize: 58,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _AchievementRowContent extends StatelessWidget {
+  const _AchievementRowContent({
+    required this.item,
+    required this.today,
+    this.badgeSize = 58,
+  });
+
+  final AchievementItem item;
+  final DateTime today;
+  final double badgeSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final dateLabel = item.unlocked ? formatAchievementDate(item.latestDate, today) : '';
+    final metaText = dateLabel.isNotEmpty
+        ? '获得${item.count}次  |  $dateLabel'
+        : '获得${item.count}次';
+
+    return Row(
+      children: [
+        AchievementBadge(item: item, size: badgeSize),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                item.displayTitle,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF333333),
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                item.displaySubtitle,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                metaText,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (item.unlocked) ...[
+          const SizedBox(width: 6),
+          const Icon(Icons.chevron_right, color: AppColors.textHint, size: 22),
+        ],
+      ],
     );
   }
 }

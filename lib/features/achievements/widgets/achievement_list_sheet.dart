@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../../../domain/services/achievement_service.dart';
-import '../../icon_picker/icon_registry.dart';
+import 'achievement_badge.dart';
 import 'achievement_utils.dart';
 
 /// Opens a draggable bottom sheet listing every unlockable achievement.
@@ -114,83 +114,71 @@ class _AchievementRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final dateLabel = item.unlocked ? formatAchievementDate(item.latestDate, today) : '';
 
-    return Opacity(
-      opacity: item.unlocked ? 1.0 : 0.45,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: item.unlocked ? const Color(0xFFFFF7E0) : const Color(0xFFF3F3F3),
-              ),
-              child: HabitIcon(item.iconKey, size: 42),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    item.title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    item.subtitle,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          AchievementBadge(item: item, size: 54),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: item.unlocked
-                        ? AppColors.primary.withValues(alpha: 0.12)
-                        : const Color(0xFFEEEEEE),
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
-                  ),
-                  child: Text(
-                    item.unlocked ? '获得 ${item.count} 次' : '未解锁',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: item.unlocked ? AppColors.primary : AppColors.textSecondary,
-                    ),
+                Text(
+                  item.displayTitle,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: item.unlocked ? AppColors.textPrimary : AppColors.textSecondary,
                   ),
                 ),
-                if (dateLabel.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    dateLabel,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                    ),
+                const SizedBox(height: 3),
+                Text(
+                  item.displaySubtitle,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
                   ),
-                ],
+                ),
               ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: item.unlocked
+                      ? AppColors.primary.withValues(alpha: 0.12)
+                      : const Color(0xFFEEEEEE),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
+                child: Text(
+                  item.unlocked ? '获得 ${item.count} 次' : '未解锁',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: item.unlocked ? AppColors.primary : AppColors.textSecondary,
+                  ),
+                ),
+              ),
+              if (dateLabel.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  dateLabel,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
       ),
     );
   }

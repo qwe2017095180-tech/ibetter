@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
+import 'package:flutter/services.dart' show SystemChannels;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +8,7 @@ import 'package:ibetter/app/router.dart';
 import 'package:ibetter/app/theme/app_colors.dart';
 import 'package:ibetter/app/theme/app_theme.dart';
 import 'package:ibetter/core/db/app_database.dart';
+import 'package:ibetter/core/prefs/app_prefs.dart';
 import 'package:ibetter/core/providers.dart';
 import 'package:ibetter/data/repositories/drift_repositories.dart';
 import 'package:ibetter/domain/models/habit.dart';
@@ -21,11 +23,13 @@ void main() {
   late AppDatabase db;
   late DriftHabitRepository habitRepo;
   late DriftCheckInRepository checkInRepo;
+  late MemoryAppPrefsStore prefsStore;
 
   setUp(() {
     db = AppDatabase(NativeDatabase.memory());
     habitRepo = DriftHabitRepository(db);
     checkInRepo = DriftCheckInRepository(db);
+    prefsStore = MemoryAppPrefsStore();
   });
 
   tearDown(() async {
@@ -33,11 +37,16 @@ void main() {
   });
 
   Widget buildApp({GoRouter? router}) {
-    final appRouter = router ??
+    final appRouter =
+        router ??
         GoRouter(
           initialLocation: '/',
           routes: [
             GoRoute(path: '/', builder: (_, _) => const HomePage()),
+            GoRoute(
+              path: Routes.history,
+              builder: (_, _) => const Scaffold(body: Text('History Timeline')),
+            ),
             GoRoute(
               path: Routes.editor,
               builder: (_, _) => const Scaffold(body: Text('Editor New')),
@@ -56,6 +65,7 @@ void main() {
       overrides: [
         databaseProvider.overrideWithValue(db),
         todayProvider.overrideWithValue(fixedToday),
+        appPrefsStoreProvider.overrideWithValue(prefsStore),
       ],
       child: MaterialApp.router(
         theme: AppTheme.light(),
@@ -67,6 +77,13 @@ void main() {
   Future<void> disposeWidgetTree(WidgetTester tester) async {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(Duration.zero);
+  }
+
+  Future<void> dismissCelebrationDialogs(WidgetTester tester) async {
+    while (find.byIcon(Icons.close).evaluate().isNotEmpty) {
+      await tester.tap(find.byIcon(Icons.close).first);
+      await tester.pumpAndSettle();
+    }
   }
 
   HabitDraft dailyDraft(
@@ -116,7 +133,7 @@ void main() {
     await disposeWidgetTree(tester);
   });
 
-  testWidgets('tapping check box toggles count=1 and 0 in DB and updates UI', (
+  testWidgets('tapping check box toggles count=1 and 0 in DB and updates solid green cell', (
     tester,
   ) async {
     late int habitId;
@@ -132,28 +149,46 @@ void main() {
     await tester.tap(find.byKey(ValueKey('habit_checkbox_$habitId')));
     await tester.pumpAndSettle();
 
+    // Completing the only habit shows Perfect Day, then Achievement Unlock.
+    expect(find.text('完美的一天！'), findsOneWidget);
+    await dismissCelebrationDialogs(tester);
+
     expect(find.byIcon(Icons.check), findsOneWidget);
     final saved = await tester.runAsync(
       () => checkInRepo.watchByDate('2026-11-24').first,
     );
     expect(saved!.single.count, 1);
 
-    // Day completion green dot renders on today's calendar cell.
-    final todayCell = find.byKey(const ValueKey('calendar_day_2026-11-24'));
-    expect(
-      find.descendant(
-        of: todayCell,
-        matching: find.byWidgetPredicate(
-          (w) =>
-              w is DecoratedBox &&
-              w.decoration is BoxDecoration &&
-              (w.decoration as BoxDecoration).color == AppColors.done,
-        ),
-      ),
-      findsOneWidget,
+    // Day completion fills today's calendar cell with solid green and retains selection border.
+    final todayCellFinder = find.byKey(const ValueKey('calendar_day_2026-11-24'));
+    final todayContainer = tester.widget<Container>(
+      find.descendant(of: todayCellFinder, matching: find.byType(Container)),
     );
+    final todayDecoration = todayContainer.decoration! as BoxDecoration;
+    expect(todayDecoration.color, const Color(0xFF34B853));
+    expect(todayDecoration.border, isNotNull);
 
-    // Tap again to uncheck (count = 0).
+    final day24Text = tester.widget<Text>(
+      find.descendant(of: todayCellFinder, matching: find.text('24')),
+    );
+    expect(day24Text.style?.color, Colors.white);
+    expect(day24Text.style?.fontWeight, FontWeight.w600);
+
+    // Select tomorrow so today is unselected -> still keeps solid green fill without border.
+    await tester.tap(find.byKey(const ValueKey('calendar_day_2026-11-25')));
+    await tester.pumpAndSettle();
+    final unselectedTodayContainer = tester.widget<Container>(
+      find.descendant(of: todayCellFinder, matching: find.byType(Container)),
+    );
+    final unselectedDecoration =
+        unselectedTodayContainer.decoration! as BoxDecoration;
+    expect(unselectedDecoration.color, const Color(0xFF34B853));
+    expect(unselectedDecoration.border, isNull);
+
+    // Jump back to today and uncheck (count = 0).
+    await tester.tap(find.byKey(const ValueKey('home_jump_today')));
+    await tester.pumpAndSettle();
+
     await tester.tap(find.byKey(ValueKey('habit_checkbox_$habitId')));
     await tester.pumpAndSettle();
 
@@ -162,6 +197,78 @@ void main() {
       () => checkInRepo.watchByDate('2026-11-24').first,
     );
     expect(afterUncheck, isEmpty);
+
+    final revertedContainer = tester.widget<Container>(
+      find.descendant(of: todayCellFinder, matching: find.byType(Container)),
+    );
+    expect((revertedContainer.decoration! as BoxDecoration).color, Colors.white);
+
+    await disposeWidgetTree(tester);
+  });
+
+  testWidgets(
+      'completing last habit opens PerfectDayDialog and 3-day milestone opens AchievementUnlockDialog',
+      (tester) async {
+    tester.view.physicalSize = const Size(412, 915);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final copied = <String>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.setData') {
+            final text = (call.arguments as Map<dynamic, dynamic>)['text'];
+            if (text is String) copied.add(text);
+          }
+          return null;
+        });
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+
+    late int habitId;
+    await tester.runAsync(() async {
+      habitId = await habitRepo.create(dailyDraft('背单词'));
+      await checkInRepo.setCount(habitId, '2026-11-22', 1);
+      await checkInRepo.setCount(habitId, '2026-11-23', 1);
+    });
+
+    await tester.pumpWidget(buildApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(ValueKey('habit_checkbox_$habitId')));
+    await tester.pumpAndSettle();
+
+    // PerfectDayDialog appears first.
+    expect(find.text('我在 轻松打卡 完美的一天'), findsOneWidget);
+    expect(find.text('完美的一天！'), findsOneWidget);
+    expect(find.text('3天'), findsOneWidget);
+    expect(find.text('赢得日期：2026年11月24日'), findsOneWidget);
+    expect(find.text('🤩 保存完美的一天'), findsOneWidget);
+
+    await tester.tap(find.text('🤩 保存完美的一天'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('已保存完美的一天'), findsOneWidget);
+    expect(copied.last, contains('完美的一天'));
+    expect((await prefsStore.load()).shareCount, 1);
+
+    // Next, AchievementUnlockDialog opens for 3-day milestones (single_3 + streak_3).
+    expect(find.text('1 / 2'), findsOneWidget);
+    expect(find.text('立即分享给朋友'), findsWidgets);
+    expect(
+      find.textContaining('三生万物').evaluate().isNotEmpty ||
+          find.textContaining('三天打鱼').evaluate().isNotEmpty,
+      isTrue,
+    );
+
+    await tester.tap(find.text('立即分享给朋友').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('已复制分享文案，快去分享给朋友吧'), findsOneWidget);
+    expect(copied.last, contains('我在轻松打卡解锁了成就'));
+    expect((await prefsStore.load()).shareCount, 2);
 
     await disposeWidgetTree(tester);
   });
@@ -191,6 +298,7 @@ void main() {
 
     await tester.tap(box);
     await tester.pumpAndSettle();
+    await dismissCelebrationDialogs(tester);
     expect(find.text('3/3'), findsOneWidget);
     expect(find.byIcon(Icons.check), findsOneWidget);
 
@@ -279,10 +387,12 @@ void main() {
     await disposeWidgetTree(tester);
   });
 
-  testWidgets('horizontal swipe moves window and clock button jumps back to today',
+  testWidgets('horizontal swipe moves window, jump-today chip returns to today, clock opens history',
       (tester) async {
     await tester.pumpWidget(buildApp());
     await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('home_jump_today')), findsNothing);
 
     // Swipe left in expanded mode -> +5 weeks (window moves 2026-11-15 -> 2026-12-20).
     await tester.fling(
@@ -294,6 +404,7 @@ void main() {
 
     expect(find.byKey(const ValueKey('calendar_day_2026-12-20')), findsOneWidget);
     expect(find.byKey(const ValueKey('calendar_day_2026-11-24')), findsNothing);
+    expect(find.byKey(const ValueKey('home_jump_today')), findsOneWidget);
     // Selected date moved +35 days: 2026-11-24 (Tue) -> 2026-12-29 (Tue).
     final dec29Cell = tester.widget<Container>(
       find.descendant(
@@ -303,12 +414,13 @@ void main() {
     );
     expect((dec29Cell.decoration! as BoxDecoration).color, Colors.white);
 
-    // Tap clock button -> jumps selected date and window back to today (2026-11-24).
-    await tester.tap(find.byIcon(Icons.access_time));
+    // Tap '回到今天' chip -> jumps selected date and window back to today (2026-11-24).
+    await tester.tap(find.byKey(const ValueKey('home_jump_today')));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('calendar_day_2026-11-24')), findsOneWidget);
     expect(find.byKey(const ValueKey('calendar_day_2026-11-15')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home_jump_today')), findsNothing);
 
     // Collapse to 1 week and swipe left -> +1 week (2026-11-29 .. 2026-12-05).
     await tester.tap(find.byKey(const ValueKey('calendar_collapse_toggle')));
@@ -322,6 +434,11 @@ void main() {
     expect(find.byKey(const ValueKey('calendar_day_2026-11-29')), findsOneWidget);
     expect(find.byKey(const ValueKey('calendar_day_2026-12-05')), findsOneWidget);
     expect(find.byKey(const ValueKey('calendar_day_2026-11-24')), findsNothing);
+
+    // Tap top-left clock button -> navigates to Routes.history.
+    await tester.tap(find.byTooltip('历史记录'));
+    await tester.pumpAndSettle();
+    expect(find.text('History Timeline'), findsOneWidget);
 
     await disposeWidgetTree(tester);
   });
@@ -386,8 +503,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('今天没有安排的项目'), findsOneWidget);
 
-    // The card opens the editor on tap. Long press opens the check-in record.
-    await tester.tap(find.byIcon(Icons.access_time));
+    // Return to today via '回到今天' chip.
+    await tester.tap(find.byKey(const ValueKey('home_jump_today')));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('周二健身'));
@@ -416,6 +533,58 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Editor $habitId'), findsOneWidget);
 
+    await disposeWidgetTree(tester);
+  });
+
+  testWidgets(
+      'partial completion skips PerfectDayDialog, single unlock omits counter, and 5 habits scroll in PerfectDayDialog',
+      (tester) async {
+    tester.view.physicalSize = const Size(360, 780);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final ids = <int>[];
+    await tester.runAsync(() async {
+      for (var i = 1; i <= 5; i++) {
+        ids.add(await habitRepo.create(dailyDraft('项目$i')));
+      }
+    });
+
+    await tester.pumpWidget(buildApp());
+    await tester.pumpAndSettle();
+
+    // Checking 1st habit opens single-card AchievementUnlockDialog ('一日幸运') without PerfectDayDialog.
+    await tester.tap(find.byKey(ValueKey('habit_checkbox_${ids[0]}')));
+    await tester.pumpAndSettle();
+    expect(find.text('完美的一天！'), findsNothing);
+    expect(find.text('一日幸运'), findsOneWidget);
+    expect(find.text('1 / 1'), findsNothing);
+    expect(find.text('立即分享给朋友'), findsOneWidget);
+
+    await dismissCelebrationDialogs(tester);
+
+    // Check habits 2..4 (no PerfectDayDialog yet).
+    for (var i = 1; i < 4; i++) {
+      final checkbox = find.byKey(ValueKey('habit_checkbox_${ids[i]}'));
+      await tester.ensureVisible(checkbox);
+      await tester.pumpAndSettle();
+      await tester.tap(checkbox);
+      await tester.pumpAndSettle();
+      await dismissCelebrationDialogs(tester);
+    }
+
+    // Check 5th (last) habit -> PerfectDayDialog lists all 5 habits without overflowing.
+    final lastCheckbox = find.byKey(ValueKey('habit_checkbox_${ids[4]}'));
+    await tester.ensureVisible(lastCheckbox);
+    await tester.pumpAndSettle();
+    await tester.tap(lastCheckbox);
+    await tester.pumpAndSettle();
+
+    expect(find.text('完美的一天！'), findsOneWidget);
+    expect(find.text('项目1'), findsWidgets);
+    expect(find.text('🤩 保存完美的一天'), findsOneWidget);
+
+    await dismissCelebrationDialogs(tester);
     await disposeWidgetTree(tester);
   });
 }

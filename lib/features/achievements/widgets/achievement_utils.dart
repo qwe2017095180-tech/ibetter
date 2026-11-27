@@ -4,8 +4,17 @@ import '../../../domain/date_key.dart' as dk;
 String formatAchievementDate(String? latestDate, DateTime today) {
   if (latestDate == null || latestDate.isEmpty) return '';
   final cleanToday = dk.dateOnly(today);
-  if (latestDate == dk.dateKey(cleanToday)) return '今天获得';
-  if (latestDate == dk.dateKey(dk.addDays(cleanToday, -1))) return '昨天获得';
+  final DateTime parsed;
+  try {
+    parsed = dk.parseDateKey(latestDate);
+  } catch (_) {
+    return latestDate;
+  }
+  final utcToday = DateTime.utc(cleanToday.year, cleanToday.month, cleanToday.day);
+  final utcParsed = DateTime.utc(parsed.year, parsed.month, parsed.day);
+  final diff = utcToday.difference(utcParsed).inDays;
+  if (diff == 0) return '今天获得';
+  if (diff >= 1 && diff <= 30) return '$diff天前获得';
   return latestDate;
 }
 

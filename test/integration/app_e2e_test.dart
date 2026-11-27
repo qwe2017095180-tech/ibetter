@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ibetter/app/app.dart';
 import 'package:ibetter/core/db/app_database.dart';
+import 'package:ibetter/core/prefs/app_prefs.dart';
 import 'package:ibetter/core/providers.dart';
 import 'package:ibetter/data/repositories/drift_repositories.dart';
 import 'package:ibetter/domain/models/habit.dart';
@@ -57,6 +58,7 @@ void main() {
             databaseProvider.overrideWithValue(db),
             todayProvider.overrideWithValue(fixedToday),
             notificationServiceProvider.overrideWithValue(spyNotif),
+            appPrefsStoreProvider.overrideWithValue(MemoryAppPrefsStore()),
           ],
           child: const IBetterApp(),
         ),
@@ -100,8 +102,25 @@ void main() {
         });
         expect(habitId, isNotNull);
 
-        // Check in today.
+        // Check in today -> triggers Perfect Day dialog, then 1-day achievement dialog.
         await tester.tap(find.byKey(ValueKey('habit_checkbox_$habitId')));
+        await tester.pumpAndSettle();
+        expect(find.text('完美的一天！'), findsOneWidget);
+        await tester.tap(find.byIcon(Icons.close).first);
+        await tester.pumpAndSettle();
+        // Close achievement unlock dialog ('一日幸运') if shown.
+        if (find.byIcon(Icons.close).evaluate().isNotEmpty) {
+          await tester.tap(find.byIcon(Icons.close).first);
+          await tester.pumpAndSettle();
+        }
+
+        // Open History timeline via top-left clock button and verify check-in appears.
+        await tester.tap(find.byTooltip('历史记录'));
+        await tester.pumpAndSettle();
+        expect(find.text('历史记录'), findsOneWidget);
+        expect(find.text('11月, 2026'), findsOneWidget);
+        expect(find.text('背单词'), findsOneWidget);
+        await tester.tap(find.byIcon(Icons.arrow_back_ios_new));
         await tester.pumpAndSettle();
 
         // All scheduled habits done today -> green checkmark badge on Today tab!
@@ -156,6 +175,11 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.byKey(ValueKey('habit_checkbox_$habitId')));
         await tester.pumpAndSettle();
+        // Dismiss Perfect Day & 2-day milestone ('不二法门') dialogs.
+        while (find.byIcon(Icons.close).evaluate().isNotEmpty) {
+          await tester.tap(find.byIcon(Icons.close).first);
+          await tester.pumpAndSettle();
+        }
 
         // Switch to Projects tab and verify Total=2, Month=2, Streak=2.
         await tester.tap(find.byIcon(Icons.assignment_outlined));

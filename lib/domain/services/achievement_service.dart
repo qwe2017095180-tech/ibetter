@@ -5,6 +5,24 @@ import 'schedule_service.dart';
 import 'stats_service.dart';
 import 'streak_service.dart';
 
+/// Category tabs / sections on "我的成就".
+enum AchievementCategory {
+  singleProject,
+  streak,
+  task,
+  hidden,
+  special,
+}
+
+/// Visual badge style used to render an achievement emblem.
+enum AchievementBadgeStyle {
+  starCircle,
+  singleDayRibbon,
+  streakScallop,
+  trophy,
+  hiddenCircle,
+}
+
 /// One weekly bucket for the "每周打卡记录" chart.
 class WeeklyRecord {
   const WeeklyRecord({
@@ -28,6 +46,12 @@ class AchievementItem {
     required this.iconKey,
     required this.count,
     this.latestDate,
+    this.category = AchievementCategory.task,
+    this.badgeStyle = AchievementBadgeStyle.trophy,
+    this.milestoneDays,
+    this.isHidden = false,
+    this.habitName,
+    this.habitIconKey,
   });
 
   final String id;
@@ -41,7 +65,23 @@ class AchievementItem {
   /// Latest date (`yyyy-MM-dd`) this achievement was earned, if known.
   final String? latestDate;
 
+  final AchievementCategory category;
+  final AchievementBadgeStyle badgeStyle;
+
+  /// Numeric milestone displayed inside the badge (e.g. `1`, `2`, `3`, `7`).
+  final int? milestoneDays;
+
+  /// When true and `!unlocked`, UI masks title/subtitle as `隐藏成就` / `达到特定条件解锁`.
+  final bool isHidden;
+
+  /// Habit that most recently triggered this achievement (for celebration popup).
+  final String? habitName;
+  final String? habitIconKey;
+
   bool get unlocked => count > 0;
+
+  String get displayTitle => (isHidden && !unlocked) ? '隐藏成就' : title;
+  String get displaySubtitle => (isHidden && !unlocked) ? '达到特定条件解锁' : subtitle;
 }
 
 /// Aggregated summary powering "我的成就" & "成绩单".
@@ -59,6 +99,8 @@ class OverallStats {
     required this.achievements,
     required this.totalAchievementCount,
     this.latestAchievement,
+    this.highestSingleAchievement,
+    this.highestStreakAchievement,
   });
 
   final int projectCount;
@@ -73,6 +115,11 @@ class OverallStats {
   final List<AchievementItem> achievements;
   final int totalAchievementCount;
   final AchievementItem? latestAchievement;
+  final AchievementItem? highestSingleAchievement;
+  final AchievementItem? highestStreakAchievement;
+
+  List<AchievementItem> byCategory(AchievementCategory cat) =>
+      achievements.where((a) => a.category == cat).toList();
 }
 
 /// Pure-Dart analytics & achievement computation.
@@ -86,6 +133,31 @@ class AchievementService {
   final ScheduleService _schedule;
   final StreakService _streak;
   final StatsService _stats;
+
+  static const _singleMilestones = <(int days, String id, String title, String icon)>[
+    (1, 'single_1', '一日幸运', 'achievement/sparkles'),
+    (2, 'single_2', '不二法门', 'achievement/light_bulb'),
+    (3, 'single_3', '三生万物', 'achievement/star'),
+    (5, 'single_5', '五福临门', 'achievement/glowing_star'),
+    (7, 'single_7', '七星高照', 'achievement/fire'),
+    (10, 'single_10', '十全十美', 'achievement/hundred_points'),
+    (15, 'single_15', '半月之约', 'achievement/sports_medal'),
+    (21, 'single_21', '廿一成习', 'achievement/1st_place_medal'),
+    (30, 'single_30', '满月达成', 'achievement/trophy'),
+    (50, 'single_50', '五十知天命', 'achievement/gem_stone'),
+    (100, 'single_100', '百炼成钢', 'achievement/crown'),
+    (365, 'single_365', '一周年纪念', 'achievement/castle'),
+  ];
+
+  static const _streakMilestones =
+      <(int days, String id, String title, String icon, bool hidden)>[
+    (3, 'streak_3', '三天打鱼', 'achievement/water_wave', false),
+    (7, 'streak_7', '习惯养成', 'achievement/sports_medal', false),
+    (14, 'streak_14', '渐入佳境', 'achievement/fire', false),
+    (21, 'streak_21', '轻车熟路', 'achievement/trophy', false),
+    (49, 'streak_49', '龙珠', 'achievement/ringed_planet', false),
+    (100, 'streak_100', '百日传奇', 'achievement/crown', true),
+  ];
 
   /// 1-based day index in the calendar year of [d] (Jan 1 = 1).
   int dayOfYear(DateTime d) {
@@ -102,17 +174,14 @@ class AchievementService {
   }
 
   /// 1-based Sunday-first week number of [d] in its calendar year.
-  /// Matches the app's Sunday-first calendar (2026-11-24 -> week 48).
   int weekOfYear(DateTime d) {
     final clean = dateOnly(d);
     final jan1 = DateTime(clean.year, 1, 1);
     final offset = weekdayIndex(jan1); // 0=Sun..6=Sat
-    final dayIdx = clean.difference(jan1).inDays; // 0-based
+    final dayIdx = clean.difference(jan1).inDays;
     return ((dayIdx + offset) ~/ 7) + 1;
   }
 
-  /// All completed check-ins paired with their habit, filtered to existing habits
-  /// where `count >= habit.dailyTarget`.
   Map<int, Set<String>> _doneDatesByHabit(List<Habit> habits, Iterable<CheckIn> checkIns) {
     final byId = {for (final h in habits) h.id: h};
     final result = <int, Set<String>>{for (final h in habits) h.id: <String>{}};
@@ -138,8 +207,7 @@ class AchievementService {
     return counts;
   }
 
-  /// Weekly completed check-in totals for every week of [year] (up to current week
-  /// if [year] == [today].year, or all weeks of [year] for past years).
+  /// Weekly completed check-in totals for every week of [year].
   List<WeeklyRecord> weeklyRecordsForYear(
     List<Habit> habits,
     Iterable<CheckIn> checkIns, {
@@ -175,11 +243,14 @@ class AchievementService {
     });
   }
 
-  /// Computes full overall summary and unlocked achievements for [today].
+  /// Computes full overall summary and categorized achievements for [today].
   OverallStats compute(
     List<Habit> habits,
     Iterable<CheckIn> checkIns, {
     required DateTime today,
+    int shareCount = 0,
+    String? lastShareDate,
+    bool cloudSynced = false,
   }) {
     final t = dateOnly(today);
     final doneByHabit = _doneDatesByHabit(habits, checkIns);
@@ -211,15 +282,16 @@ class AchievementService {
       doneByHabit: doneByHabit,
       dailyCounts: dailyCounts,
       totalCompletions: totalCompletions,
-      bestStreak: bestStreak,
       today: t,
+      shareCount: shareCount,
+      lastShareDate: lastShareDate,
+      cloudSynced: cloudSynced,
     );
 
     final totalAchievementCount =
         achievements.fold<int>(0, (sum, a) => sum + a.count);
 
-    // Pick the most recent unlocked achievement (preferring highest latestDate,
-    // and prioritizing "完美的一天" when tied on the same latestDate).
+    // Latest unlocked achievement (prefer highest latestDate, then 完美的一天).
     final unlocked = achievements.where((a) => a.unlocked).toList();
     AchievementItem? latest;
     if (unlocked.isNotEmpty) {
@@ -228,10 +300,25 @@ class AchievementService {
         if (cmpDate != 0) return cmpDate;
         if (a.id == 'perfect_day') return -1;
         if (b.id == 'perfect_day') return 1;
-        return 0;
+        return (b.milestoneDays ?? 0).compareTo(a.milestoneDays ?? 0);
       });
       latest = unlocked.first;
     }
+
+    // Highest unlocked single-project achievement.
+    final unlockedSingle = achievements
+        .where((a) => a.category == AchievementCategory.singleProject && a.unlocked)
+        .toList();
+    final highestSingle = unlockedSingle.isEmpty ? null : unlockedSingle.last;
+
+    // Highest unlocked streak milestone achievement (excluding 完美的一天).
+    final unlockedStreaks = achievements
+        .where((a) =>
+            a.category == AchievementCategory.streak &&
+            a.id != 'perfect_day' &&
+            a.unlocked)
+        .toList();
+    final highestStreak = unlockedStreaks.isEmpty ? null : unlockedStreaks.last;
 
     final doy = dayOfYear(t);
     final totalYearDays = daysInYear(t.year);
@@ -249,7 +336,99 @@ class AchievementService {
       achievements: achievements,
       totalAchievementCount: totalAchievementCount,
       latestAchievement: latest,
+      highestSingleAchievement: highestSingle,
+      highestStreakAchievement: highestStreak,
     );
+  }
+
+  /// Returns milestone achievements newly unlocked by [habit] when completing [date].
+  /// Useful for showing the orange celebration carousel right after a check-in!
+  List<AchievementItem> newlyUnlockedForCheckIn({
+    required Habit habit,
+    required DateTime date,
+    required List<Habit> allHabits,
+    required Iterable<CheckIn> allCheckInsBefore,
+    required Iterable<CheckIn> allCheckInsAfter,
+    required DateTime today,
+  }) {
+    final before = compute(allHabits, allCheckInsBefore, today: today);
+    final after = compute(allHabits, allCheckInsAfter, today: today);
+    final beforeById = {for (final a in before.achievements) a.id: a.count};
+    final dateStr = dateKey(date);
+
+    final unlocked = <AchievementItem>[];
+    for (final a in after.achievements) {
+      if (a.id == 'perfect_day') continue; // PerfectDayDialog handles 完美的一天 separately.
+      final prev = beforeById[a.id] ?? 0;
+      if (a.count > prev) {
+        unlocked.add(AchievementItem(
+          id: a.id,
+          title: a.title,
+          subtitle: a.subtitle,
+          iconKey: a.iconKey,
+          count: a.count,
+          latestDate: dateStr,
+          category: a.category,
+          badgeStyle: a.badgeStyle,
+          milestoneDays: a.milestoneDays,
+          isHidden: a.isHidden,
+          habitName: habit.name,
+          habitIconKey: habit.iconKey,
+        ));
+      }
+    }
+    return unlocked;
+  }
+
+  /// Finds the date (`yyyy-MM-dd`) on which a habit first reached a streak of [target] days.
+  String? _firstDateReachingStreak(Habit habit, List<String> sortedDoneDates, int target) {
+    if (sortedDoneDates.length < target) return null;
+    var cur = 0;
+    DateTime? prev;
+    for (final k in sortedDoneDates) {
+      final d = parseDateKey(k);
+      if (prev == null) {
+        cur = 1;
+      } else {
+        var next = addDays(prev, 1);
+        var guard = 0;
+        while (habit.schedule.type == ScheduleType.weekdays &&
+            !_schedule.isScheduledOn(habit, next) &&
+            guard++ < 7) {
+          next = addDays(next, 1);
+        }
+        cur = isSameDay(next, d) ? cur + 1 : 1;
+      }
+      if (cur >= target) return k;
+      prev = d;
+    }
+    return null;
+  }
+
+  /// Checks if the user has 5 consecutive weekday (Mon–Fri) check-ins in any single week.
+  ({int count, String? latestDate}) _computeWorkdayStreaks(Set<String> recordedDates) {
+    if (recordedDates.isEmpty) return (count: 0, latestDate: null);
+    final sorted = recordedDates.toList()..sort();
+    var count = 0;
+    String? latest;
+    final checkedMondays = <String>{};
+    for (final k in sorted) {
+      final d = parseDateKey(k);
+      if (d.weekday != DateTime.monday) continue;
+      if (!checkedMondays.add(k)) continue;
+      var allFive = true;
+      for (var i = 0; i < 5; i++) {
+        if (!recordedDates.contains(dateKey(addDays(d, i)))) {
+          allFive = false;
+          break;
+        }
+      }
+      if (allFive) {
+        count++;
+        latest = dateKey(addDays(d, 4));
+      }
+    }
+    return (count: count, latestDate: latest);
   }
 
   List<AchievementItem> _computeAchievements({
@@ -258,17 +437,53 @@ class AchievementService {
     required Map<int, Set<String>> doneByHabit,
     required Map<String, int> dailyCounts,
     required int totalCompletions,
-    required int bestStreak,
     required DateTime today,
+    required int shareCount,
+    required String? lastShareDate,
+    required bool cloudSynced,
   }) {
     final sortedAllDates = dailyCounts.keys.toList()..sort();
     final latestAnyDate = sortedAllDates.isEmpty ? null : sortedAllDates.last;
-    final firstHabitDate = habits.isEmpty
-        ? null
-        : (habits.map((h) => dateKey(h.startDate)).toList()..sort()).first;
+    final recordedSet = dailyCounts.keys.toSet();
 
-    // Perfect days: dates where at least one active habit was scheduled and ALL
-    // scheduled active habits were completed.
+    // Sorted done dates per habit.
+    final sortedByHabit = <int, List<String>>{
+      for (final h in habits) h.id: (doneByHabit[h.id]?.toList() ?? <String>[])..sort(),
+    };
+
+    // 1. 单项目成就 (singleProject)
+    final singleItems = <AchievementItem>[];
+    for (final (days, id, title, icon) in _singleMilestones) {
+      var hits = 0;
+      String? latest;
+      Habit? latestHabit;
+      for (final h in habits) {
+        final dates = sortedByHabit[h.id] ?? const <String>[];
+        if (dates.length >= days) {
+          hits++;
+          final reachedOn = dates[days - 1];
+          if (latest == null || reachedOn.compareTo(latest) >= 0) {
+            latest = reachedOn;
+            latestHabit = h;
+          }
+        }
+      }
+      singleItems.add(AchievementItem(
+        id: id,
+        title: title,
+        subtitle: '单项目坚持$days天',
+        iconKey: icon,
+        count: hits,
+        latestDate: latest,
+        category: AchievementCategory.singleProject,
+        badgeStyle: AchievementBadgeStyle.singleDayRibbon,
+        milestoneDays: days,
+        habitName: latestHabit?.name,
+        habitIconKey: latestHabit?.iconKey,
+      ));
+    }
+
+    // 2. 连续成就 (streak)
     final checkInsByDate = <String, List<CheckIn>>{};
     for (final c in checkIns) {
       (checkInsByDate[c.date] ??= <CheckIn>[]).add(c);
@@ -282,34 +497,7 @@ class AchievementService {
       }
     }
 
-    // Goals reached count.
-    var goalsReached = 0;
-    for (final h in habits) {
-      final done = doneByHabit[h.id] ?? const <String>{};
-      if (h.goalDays != null && done.length >= h.goalDays!) {
-        goalsReached++;
-      }
-    }
-
-    // Active habits count.
-    final activeCount = habits.where((h) => h.isActive).length;
-
-    // Longest consecutive days with ANY check-in.
-    var bestAnyDayRun = 0;
-    var curRun = 0;
-    DateTime? prev;
-    for (final k in sortedAllDates) {
-      final d = parseDateKey(k);
-      if (prev != null && isSameDay(addDays(prev, 1), d)) {
-        curRun++;
-      } else {
-        curRun = 1;
-      }
-      if (curRun > bestAnyDayRun) bestAnyDayRun = curRun;
-      prev = d;
-    }
-
-    return [
+    final streakItems = <AchievementItem>[
       AchievementItem(
         id: 'perfect_day',
         title: '完美的一天',
@@ -317,79 +505,256 @@ class AchievementService {
         iconKey: 'achievement/star',
         count: perfectDates.length,
         latestDate: perfectDates.isEmpty ? null : perfectDates.last,
+        category: AchievementCategory.streak,
+        badgeStyle: AchievementBadgeStyle.starCircle,
       ),
+    ];
+
+    for (final (days, id, title, icon, isHidden) in _streakMilestones) {
+      var hits = 0;
+      String? latest;
+      Habit? latestHabit;
+      for (final h in habits) {
+        final reachedOn = _firstDateReachingStreak(h, sortedByHabit[h.id] ?? const [], days);
+        if (reachedOn != null) {
+          hits++;
+          if (latest == null || reachedOn.compareTo(latest) >= 0) {
+            latest = reachedOn;
+            latestHabit = h;
+          }
+        }
+      }
+      streakItems.add(AchievementItem(
+        id: id,
+        title: title,
+        subtitle: '连续打卡$days天',
+        iconKey: icon,
+        count: hits,
+        latestDate: latest,
+        category: AchievementCategory.streak,
+        badgeStyle: AchievementBadgeStyle.streakScallop,
+        milestoneDays: days,
+        isHidden: isHidden,
+        habitName: latestHabit?.name,
+        habitIconKey: latestHabit?.iconKey,
+      ));
+    }
+
+    // 3. 任务成就 (task — matches screenshot 7!)
+    var goalsReached = 0;
+    String? latestGoalDate;
+    for (final h in habits) {
+      final dates = sortedByHabit[h.id] ?? const <String>[];
+      if (h.goalDays != null && dates.length >= h.goalDays!) {
+        goalsReached++;
+        final d = dates[h.goalDays! - 1];
+        if (latestGoalDate == null || d.compareTo(latestGoalDate) > 0) {
+          latestGoalDate = d;
+        }
+      }
+    }
+
+    String? thirdHabitDate;
+    if (habits.length >= 3) {
+      final sortedCreated = habits.map((h) => dateKey(h.createdAt)).toList()..sort();
+      thirdHabitDate = sortedCreated[2];
+    }
+
+    final workday = _computeWorkdayStreaks(recordedSet);
+    final octopusDates = dailyCounts.entries
+        .where((e) => e.value >= 8)
+        .map((e) => e.key)
+        .toList()
+      ..sort();
+
+    final taskItems = <AchievementItem>[
       AchievementItem(
-        id: 'first_project',
-        title: '新的开始',
-        subtitle: '创建第一个习惯项目',
-        iconKey: 'achievement/rocket',
-        count: habits.isNotEmpty ? 1 : 0,
-        latestDate: firstHabitDate,
-      ),
-      AchievementItem(
-        id: 'first_checkin',
-        title: '迈出第一步',
-        subtitle: '完成第一次打卡',
-        iconKey: 'achievement/sparkles',
-        count: totalCompletions > 0 ? 1 : 0,
-        latestDate: sortedAllDates.isEmpty ? null : sortedAllDates.first,
-      ),
-      AchievementItem(
-        id: 'multi_habit',
-        title: '多面手',
-        subtitle: '同时进行 3 个及以上项目',
-        iconKey: 'achievement/light_bulb',
-        count: activeCount >= 3 ? 1 : 0,
-        latestDate: activeCount >= 3 ? dateKey(today) : null,
-      ),
-      AchievementItem(
-        id: 'streak_3',
-        title: '小试牛刀',
-        subtitle: '单个项目连续打卡 3 天',
-        iconKey: 'achievement/fire',
-        count: bestStreak >= 3 ? 1 : 0,
-        latestDate: bestStreak >= 3 ? latestAnyDate : null,
-      ),
-      AchievementItem(
-        id: 'streak_7',
-        title: '坚持一周',
-        subtitle: '单个项目连续打卡 7 天',
-        iconKey: 'achievement/sports_medal',
-        count: bestStreak >= 7 ? 1 : 0,
-        latestDate: bestStreak >= 7 ? latestAnyDate : null,
-      ),
-      AchievementItem(
-        id: 'streak_21',
-        title: '习惯养成',
-        subtitle: '单个项目连续打卡 21 天',
-        iconKey: 'achievement/trophy',
-        count: bestStreak >= 21 ? 1 : 0,
-        latestDate: bestStreak >= 21 ? latestAnyDate : null,
-      ),
-      AchievementItem(
-        id: 'full_week',
-        title: '全勤一周',
-        subtitle: '连续 7 天每日都有打卡记录',
-        iconKey: 'achievement/1st_place_medal',
-        count: bestAnyDayRun >= 7 ? 1 : 0,
-        latestDate: bestAnyDayRun >= 7 ? latestAnyDate : null,
+        id: 'goal_reached',
+        title: '罗马之石',
+        subtitle: '完成目标任务',
+        iconKey: 'achievement/gem_stone',
+        count: goalsReached,
+        latestDate: latestGoalDate,
+        category: AchievementCategory.task,
+        badgeStyle: AchievementBadgeStyle.trophy,
       ),
       AchievementItem(
         id: 'total_100',
-        title: '百日筑基',
-        subtitle: '累计达成 100 次打卡',
-        iconKey: 'achievement/crown',
+        title: '百日维新',
+        subtitle: '总打卡数量达到100',
+        iconKey: 'achievement/hundred_points',
         count: totalCompletions ~/ 100,
         latestDate: totalCompletions >= 100 ? latestAnyDate : null,
+        category: AchievementCategory.task,
+        badgeStyle: AchievementBadgeStyle.trophy,
+        milestoneDays: 100,
       ),
       AchievementItem(
-        id: 'goal_reached',
-        title: '目标达成',
-        subtitle: '完成一个设定天数目标的项目',
-        iconKey: 'achievement/gem_stone',
-        count: goalsReached,
-        latestDate: goalsReached > 0 ? latestAnyDate : null,
+        id: 'three_habits',
+        title: '三国鼎立',
+        subtitle: '添加三个任务',
+        iconKey: 'achievement/trophy',
+        count: habits.length >= 3 ? 1 : 0,
+        latestDate: thirdHabitDate,
+        category: AchievementCategory.task,
+        badgeStyle: AchievementBadgeStyle.trophy,
+        milestoneDays: 3,
       ),
+      AchievementItem(
+        id: 'friendship_medal',
+        title: '友谊勋章',
+        subtitle: '分享一次',
+        iconKey: 'achievement/party_popper',
+        count: shareCount > 0 ? 1 : 0,
+        latestDate: shareCount > 0 ? (lastShareDate ?? dateKey(today)) : null,
+        category: AchievementCategory.task,
+        badgeStyle: AchievementBadgeStyle.trophy,
+      ),
+      AchievementItem(
+        id: 'workday_warrior',
+        title: '工作日狂魔',
+        subtitle: '连续5个工作日打卡',
+        iconKey: 'achievement/rocket',
+        count: workday.count,
+        latestDate: workday.latestDate,
+        category: AchievementCategory.task,
+        badgeStyle: AchievementBadgeStyle.trophy,
+      ),
+      AchievementItem(
+        id: 'sync_400',
+        title: '同步率 400%',
+        subtitle: '成功云端同步数据',
+        iconKey: 'achievement/milky_way',
+        count: cloudSynced ? 1 : 0,
+        latestDate: cloudSynced ? dateKey(today) : null,
+        category: AchievementCategory.task,
+        badgeStyle: AchievementBadgeStyle.trophy,
+      ),
+      AchievementItem(
+        id: 'octopus_medal',
+        title: '八爪鱼勋章',
+        subtitle: '同一天完成8个项目',
+        iconKey: 'achievement/sparkles',
+        count: octopusDates.length,
+        latestDate: octopusDates.isEmpty ? null : octopusDates.last,
+        category: AchievementCategory.task,
+        badgeStyle: AchievementBadgeStyle.trophy,
+      ),
+    ];
+
+    // 4. 隐藏成就 (hidden — genuine unlockable easter-egg conditions)
+    final earlyBirdDates = <String>[];
+    final nightOwlDates = <String>[];
+    final weekendDates = <String>[];
+    for (final c in checkIns) {
+      if (c.count <= 0) continue;
+      final hour = c.updatedAt.hour;
+      if (hour >= 4 && hour < 7) earlyBirdDates.add(c.date);
+      if (hour >= 23 || hour < 3) nightOwlDates.add(c.date);
+      final wd = parseDateKey(c.date).weekday;
+      if (wd == DateTime.saturday || wd == DateTime.sunday) {
+        weekendDates.add(c.date);
+      }
+    }
+    earlyBirdDates.sort();
+    nightOwlDates.sort();
+    weekendDates.sort();
+
+    final hiddenItems = <AchievementItem>[
+      AchievementItem(
+        id: 'hidden_early_bird',
+        title: '晨曦行者',
+        subtitle: '在清晨 7 点前完成打卡',
+        iconKey: 'mind/sunrise',
+        count: earlyBirdDates.toSet().length,
+        latestDate: earlyBirdDates.isEmpty ? null : earlyBirdDates.last,
+        category: AchievementCategory.hidden,
+        badgeStyle: AchievementBadgeStyle.hiddenCircle,
+        isHidden: true,
+      ),
+      AchievementItem(
+        id: 'hidden_night_owl',
+        title: '守夜人',
+        subtitle: '在深夜 23 点后坚持打卡',
+        iconKey: 'health/crescent_moon',
+        count: nightOwlDates.toSet().length,
+        latestDate: nightOwlDates.isEmpty ? null : nightOwlDates.last,
+        category: AchievementCategory.hidden,
+        badgeStyle: AchievementBadgeStyle.hiddenCircle,
+        isHidden: true,
+      ),
+      AchievementItem(
+        id: 'hidden_weekend_warrior',
+        title: '周末不打烊',
+        subtitle: '在周末完成 4 天打卡',
+        iconKey: 'achievement/confetti_ball',
+        count: weekendDates.toSet().length >= 4 ? 1 : 0,
+        latestDate: weekendDates.toSet().length >= 4 ? weekendDates.last : null,
+        category: AchievementCategory.hidden,
+        badgeStyle: AchievementBadgeStyle.hiddenCircle,
+        isHidden: true,
+      ),
+      AchievementItem(
+        id: 'hidden_perfect_week',
+        title: '完美七日',
+        subtitle: '累计获得 7 次完美的一天',
+        iconKey: 'achievement/crown',
+        count: perfectDates.length >= 7 ? 1 : 0,
+        latestDate: perfectDates.length >= 7 ? perfectDates[6] : null,
+        category: AchievementCategory.hidden,
+        badgeStyle: AchievementBadgeStyle.hiddenCircle,
+        isHidden: true,
+      ),
+    ];
+
+    // 5. 特殊成就 (special)
+    final unlockedSoFar = [
+      ...singleItems,
+      ...streakItems,
+      ...taskItems,
+      ...hiddenItems,
+    ].where((a) => a.unlocked).length;
+
+    final specialItems = <AchievementItem>[
+      AchievementItem(
+        id: 'special_collector',
+        title: '勋章收藏家',
+        subtitle: '累计解锁 10 项不同成就',
+        iconKey: 'achievement/military_medal',
+        count: unlockedSoFar >= 10 ? 1 : 0,
+        latestDate: unlockedSoFar >= 10 ? latestAnyDate : null,
+        category: AchievementCategory.special,
+        badgeStyle: AchievementBadgeStyle.hiddenCircle,
+      ),
+      AchievementItem(
+        id: 'special_multi_5',
+        title: '五线并行',
+        subtitle: '同时进行 5 个及以上项目',
+        iconKey: 'achievement/shield',
+        count: habits.where((h) => h.isActive).length >= 5 ? 1 : 0,
+        latestDate: habits.where((h) => h.isActive).length >= 5 ? dateKey(today) : null,
+        category: AchievementCategory.special,
+        badgeStyle: AchievementBadgeStyle.hiddenCircle,
+      ),
+      AchievementItem(
+        id: 'special_year_legend',
+        title: '年度传奇',
+        subtitle: '累计打卡记录达到 180 天',
+        iconKey: 'achievement/flying_saucer',
+        count: recordedSet.length >= 180 ? 1 : 0,
+        latestDate: recordedSet.length >= 180 ? latestAnyDate : null,
+        category: AchievementCategory.special,
+        badgeStyle: AchievementBadgeStyle.hiddenCircle,
+        isHidden: true,
+      ),
+    ];
+
+    return [
+      ...singleItems,
+      ...streakItems,
+      ...taskItems,
+      ...hiddenItems,
+      ...specialItems,
     ];
   }
 }

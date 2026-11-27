@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:material_ui/material_ui.dart';
 
+import '../../../app/app_brand.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../domain/services/achievement_service.dart';
 import '../../icon_picker/icon_registry.dart';
@@ -10,6 +11,7 @@ Future<void> showReportCardSheet(
   BuildContext context, {
   required OverallStats stats,
   required DateTime today,
+  VoidCallback? onShared,
 }) {
   final messenger = ScaffoldMessenger.of(context);
   return showDialog<void>(
@@ -19,6 +21,7 @@ Future<void> showReportCardSheet(
       today: today,
       onCopy: (text) async {
         await Clipboard.setData(ClipboardData(text: text));
+        onShared?.call();
         if (!dialogContext.mounted) return;
         messenger
           ..hideCurrentSnackBar()
@@ -42,7 +45,7 @@ class _ReportCardDialog extends StatelessWidget {
   String _buildShareText() {
     final topHabit = stats.topHabitName ?? '暂无';
     return [
-      '轻松打卡 ${today.year} 年度成绩单',
+      '${AppBrand.name} ${today.year} 年度成绩单',
       '项目数：${stats.projectCount}',
       '记录天数：${stats.recordedDays} 天',
       '达成次数：${stats.totalCompletions} 次',
@@ -139,7 +142,8 @@ class _ReportCardDialog extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                            child: _MetricTile(label: '达成次数', value: '${stats.totalCompletions}')),
+                          child: _MetricTile(label: '达成次数', value: '${stats.totalCompletions}'),
+                        ),
                         Expanded(child: _MetricTile(label: '最长连续', value: '${stats.longestStreak}')),
                       ],
                     ),

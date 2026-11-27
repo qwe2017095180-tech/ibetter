@@ -125,6 +125,7 @@ Future<void> showHabitShareDialog(
   BuildContext context, {
   required Habit habit,
   required HabitStats stats,
+  VoidCallback? onShared,
 }) {
   final messenger = ScaffoldMessenger.of(context);
   final shareText = buildHabitShareText(habit, stats);
@@ -231,6 +232,7 @@ Future<void> showHabitShareDialog(
                   FilledButton.icon(
                     onPressed: () async {
                       await Clipboard.setData(ClipboardData(text: shareText));
+                      onShared?.call();
                       messenger
                         ..hideCurrentSnackBar()
                         ..showSnackBar(const SnackBar(content: Text('已复制分享文案')));

@@ -219,6 +219,8 @@ class _CalendarDayCell extends StatelessWidget {
     required this.onTap,
   });
 
+  static const _allDoneFill = Color(0xFF34B853);
+
   final DateTime day;
   final double height;
   final bool isSelected;
@@ -230,7 +232,9 @@ class _CalendarDayCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color textColor;
-    if (isSelected || isToday) {
+    if (allDone) {
+      textColor = Colors.white;
+    } else if (isSelected || isToday) {
       textColor = AppColors.primary;
     } else if (isFuture) {
       textColor = AppColors.textHint;
@@ -239,7 +243,11 @@ class _CalendarDayCell extends StatelessWidget {
     }
 
     final fontWeight =
-        (isSelected || isToday) ? FontWeight.w600 : FontWeight.w400;
+        (allDone || isSelected || isToday) ? FontWeight.w600 : FontWeight.w400;
+
+    final backgroundColor = allDone
+        ? _allDoneFill
+        : (isSelected ? Colors.white : AppColors.calendarCell);
 
     return GestureDetector(
       key: ValueKey('calendar_day_${dk.dateKey(day)}'),
@@ -248,64 +256,45 @@ class _CalendarDayCell extends StatelessWidget {
       child: Container(
         height: height,
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : AppColors.calendarCell,
+          color: backgroundColor,
           border: isSelected
               ? Border.all(color: AppColors.primary, width: 2)
               : null,
         ),
-        child: Stack(
-          children: [
-            Center(
-              child: day.day == 1
-                  ? Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _monthAbbr[day.month - 1],
-                          style: TextStyle(
-                            fontSize: 10,
-                            height: 1.1,
-                            fontWeight: FontWeight.w600,
-                            color: textColor,
-                          ),
-                        ),
-                        Text(
-                          '${day.month}月',
-                          style: TextStyle(
-                            fontSize: 13,
-                            height: 1.15,
-                            fontWeight: fontWeight,
-                            color: textColor,
-                          ),
-                        ),
-                      ],
-                    )
-                  : Text(
-                      '${day.day}',
+        child: Center(
+          child: day.day == 1
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _monthAbbr[day.month - 1],
                       style: TextStyle(
-                        fontSize: 20,
-                        height: 1.0,
+                        fontSize: 10,
+                        height: 1.1,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                      ),
+                    ),
+                    Text(
+                      '${day.month}月',
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.15,
                         fontWeight: fontWeight,
                         color: textColor,
                       ),
                     ),
-            ),
-            if (allDone)
-              const Positioned(
-                bottom: 4,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: AppColors.done,
-                      shape: BoxShape.circle,
-                    ),
-                    child: SizedBox(width: 5, height: 5),
+                  ],
+                )
+              : Text(
+                  '${day.day}',
+                  style: TextStyle(
+                    fontSize: 20,
+                    height: 1.0,
+                    fontWeight: fontWeight,
+                    color: textColor,
                   ),
                 ),
-              ),
-          ],
         ),
       ),
     );

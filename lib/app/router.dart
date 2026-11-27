@@ -7,6 +7,7 @@ import '../core/widgets/common.dart';
 import '../domain/date_key.dart' as dk;
 import '../domain/services/schedule_service.dart';
 import '../features/achievements/achievements_page.dart';
+import '../features/history/history_page.dart';
 import '../features/home/home_page.dart';
 import '../features/more/more_page.dart';
 import '../features/placeholders/placeholder_pages.dart';
@@ -25,6 +26,9 @@ abstract final class Routes {
   static const achievements = '/achievements';
   static const me = '/me';
   static const more = '/more';
+
+  /// History timeline page.
+  static const history = '/history';
 
   /// Project detail / stats page.
   static String projectDetail(int id) => '/projects/$id';
@@ -59,6 +63,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             GoRoute(path: Routes.more, builder: (_, _) => const MorePage()),
           ]),
         ],
+      ),
+      GoRoute(
+        parentNavigatorKey: rootKey,
+        path: Routes.history,
+        builder: (_, _) => const HistoryPage(),
       ),
       GoRoute(
         parentNavigatorKey: rootKey,
@@ -178,6 +187,7 @@ class _ShellState extends ConsumerState<_Shell> {
                 _TabItem(
                   selected: shell.currentIndex == 2,
                   onTap: () => _go(2),
+                  badge: ref.watch(unreadAchievementsCountProvider),
                   child: Icon(
                     shell.currentIndex == 2 ? Icons.emoji_events : Icons.emoji_events_outlined,
                     size: 32,
