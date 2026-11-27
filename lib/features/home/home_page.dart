@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart' show HapticFeedback, SystemSound, SystemSoundType;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -7,17 +8,21 @@ import 'package:material_ui/material_ui.dart';
 import '../../app/app_brand.dart';
 import '../../app/router.dart';
 import '../../app/theme/app_colors.dart';
+import '../../core/platform/native_bridge.dart';
+import '../../core/prefs/app_prefs.dart';
 import '../../core/providers.dart';
 import '../../core/widgets/common.dart';
 import '../../domain/date_key.dart' as dk;
 import '../../domain/models/check_in.dart';
 import '../../domain/models/habit.dart';
+import '../achievements/widgets/achievement_badge.dart';
 import '../achievements/widgets/achievement_unlock_dialog.dart';
 import '../project_editor/quotes.dart';
 import '../qingsong/qingsong_providers.dart';
 import 'home_providers.dart';
 import 'widgets/agenda_section.dart';
 import 'widgets/calendar_section.dart';
+import 'widgets/celebration_banner.dart';
 import 'widgets/check_in_detail_sheet.dart';
 import 'widgets/habit_check_in_card.dart';
 import 'widgets/home_empty_state.dart';
@@ -35,6 +40,7 @@ class HomePage extends ConsumerStatefulWidget {
 class _HomePageState extends ConsumerState<HomePage> {
   bool _initialSynced = false;
   List<String>? _cachedQuotes;
+  String? _lastWidgetSyncSignature;
 
   @override
   void initState() {
@@ -56,6 +62,40 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (_initialSynced || !mounted) return;
     _initialSynced = true;
     unawaited(ref.read(qingsongSyncProvider.notifier).sync(silent: true));
+  }
+
+  void _syncHomeWidgetIfNeeded(
+    List<Habit> habits,
+    List<CheckIn> allCheckIns,
+    DateTime today,
+  ) {
+    final scheduleService = ref.read(scheduleServiceProvider);
+    final todayKey = dk.dateKey(today);
+    final counts = {
+      for (final c in allCheckIns)
+        if (c.date == todayKey) c.habitId: c.count,
+    };
+    final scheduled = habits
+        .where((h) => h.isActive && scheduleService.isScheduledOn(h, today))
+        .toList();
+    final lines = <String>[
+      for (final h in scheduled.take(4))
+        '${scheduleService.isDone(h, counts[h.id] ?? 0) ? "☑" : "☐"} ${h.name}',
+    ];
+    final doneCount = scheduled
+        .where((h) => scheduleService.isDone(h, counts[h.id] ?? 0))
+        .length;
+    final sig = '$todayKey|$doneCount/${scheduled.length}|${lines.join(",")}';
+    if (sig == _lastWidgetSyncSignature) return;
+    _lastWidgetSyncSignature = sig;
+    unawaited(
+      ref.read(nativeBridgeProvider).updateHomeWidget(
+            title: AppBrand.name,
+            lines: lines,
+            doneCount: doneCount,
+            totalCount: scheduled.length,
+          ),
+    );
   }
 
   Future<void> _onRefresh() async {
@@ -136,6 +176,12 @@ class _HomePageState extends ConsumerState<HomePage> {
               : habit.dailyTarget);
     if (nextCount == currentCount) return;
 
+    final prefs = ref.read(appPrefsProvider).asData?.value ?? const AppPrefs();
+    if (prefs.soundEnabled) {
+      unawaited(SystemSound.play(SystemSoundType.click));
+      unawaited(HapticFeedback.lightImpact());
+    }
+
     final scheduleService = ref.read(scheduleServiceProvider);
     final wasDone = scheduleService.isDone(habit, currentCount);
     final isNowDone = scheduleService.isDone(habit, nextCount);
@@ -186,13 +232,34 @@ class _HomePageState extends ConsumerState<HomePage> {
             totalDays: statsService.doneDates(h, allCheckInsAfter).length,
           ),
       ];
-      final quotes = _cachedQuotes ?? fallbackQuotes;
-      await showPerfectDayDialog(
-        context,
-        date: selectedDate,
-        completedHabits: completedHabits,
-        quote: pickRandomQuote(quotes),
-      );
+      final quote = pickRandomQuote(_cachedQuotes ?? fallbackQuotes);
+      if (prefs.perfectDayDisplayStyle == CelebrationStyle.banner) {
+        await showCelebrationBanner(
+          context,
+          title: '完美的一天！',
+          subtitle: '已完成今日全部 ${completedHabits.length} 个项目',
+          color: const Color(0xFFFFA524),
+          leading: const Icon(Icons.emoji_events, color: Colors.white, size: 28),
+          onTap: () {
+            if (!context.mounted) return;
+            unawaited(
+              showPerfectDayDialog(
+                context,
+                date: selectedDate,
+                completedHabits: completedHabits,
+                quote: quote,
+              ),
+            );
+          },
+        );
+      } else {
+        await showPerfectDayDialog(
+          context,
+          date: selectedDate,
+          completedHabits: completedHabits,
+          quote: quote,
+        );
+      }
       if (!mounted || !context.mounted) return;
     }
 
@@ -207,7 +274,26 @@ class _HomePageState extends ConsumerState<HomePage> {
           today: today,
         );
     if (newlyUnlocked.isNotEmpty) {
-      await showAchievementUnlockDialog(context, items: newlyUnlocked);
+      if (prefs.achievementDisplayStyle == CelebrationStyle.banner) {
+        final first = newlyUnlocked.first;
+        await showCelebrationBanner(
+          context,
+          title: '解锁成就：${first.displayTitle}',
+          subtitle: newlyUnlocked.length > 1
+              ? '共解锁 ${newlyUnlocked.length} 项新成就，点击查看'
+              : first.displaySubtitle,
+          color: const Color(0xFFFF882E),
+          leading: AchievementBadge(item: first, size: 36),
+          onTap: () {
+            if (!context.mounted) return;
+            unawaited(
+              showAchievementUnlockDialog(context, items: newlyUnlocked),
+            );
+          },
+        );
+      } else {
+        await showAchievementUnlockDialog(context, items: newlyUnlocked);
+      }
     }
   }
 
@@ -233,18 +319,132 @@ class _HomePageState extends ConsumerState<HomePage> {
     ref.read(calendarWindowStartProvider.notifier).jumpToDate(today);
   }
 
+  Widget _buildHabitCollection(
+    BuildContext context, {
+    required List<Habit> scheduled,
+    required Map<int, CheckIn> checkInByHabit,
+    required DateTime selectedDate,
+    required String selectedKey,
+    required DateTime today,
+    required AppPrefs prefs,
+  }) {
+    final scheduleService = ref.read(scheduleServiceProvider);
+
+    Widget buildCard(Habit habit) {
+      final checkIn = checkInByHabit[habit.id];
+      final count = checkIn?.count ?? 0;
+      final canCheckIn = scheduleService.canCheckIn(
+        habit,
+        selectedDate,
+        today: today,
+      );
+      return HabitCheckInCard(
+        habit: habit,
+        count: count,
+        isDone: scheduleService.isDone(habit, count),
+        canCheckIn: canCheckIn,
+        cardStyle: prefs.cardStyle,
+        cardLayout: prefs.cardLayout,
+        onTapCard: () => context.push(Routes.editHabit(habit.id)),
+        onLongPressCard: () => showCheckInDetailSheet(
+          context,
+          habit: habit,
+          date: selectedKey,
+          checkIn: checkIn,
+          canEditRecord: canCheckIn,
+          save: ({score, mood, note}) => ref
+              .read(checkInRepositoryProvider)
+              .saveDetail(
+                habit.id,
+                selectedKey,
+                score: score,
+                mood: mood,
+                note: note,
+              ),
+          editHabit: () => context.push(Routes.editHabit(habit.id)),
+        ),
+        onTapCheck: () => _onTapCheck(
+          context,
+          habit: habit,
+          selectedDate: selectedDate,
+          today: today,
+          currentCount: count,
+          canCheckIn: canCheckIn,
+        ),
+        onLongPressCheck: habit.dailyTarget > 1
+            ? () => _onLongPressCheck(
+                context,
+                habit: habit,
+                selectedDate: selectedDate,
+                currentCount: count,
+                canCheckIn: canCheckIn,
+              )
+            : null,
+      );
+    }
+
+    if (prefs.cardLayout == CardLayout.standard) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [for (final h in scheduled) buildCard(h)],
+      );
+    }
+
+    final columns = prefs.cardLayout == CardLayout.compact ? 2 : 3;
+    final rows = <List<Habit>>[];
+    for (var i = 0; i < scheduled.length; i += columns) {
+      rows.add(
+        scheduled.sublist(
+          i,
+          i + columns > scheduled.length ? scheduled.length : i + columns,
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var r = 0; r < rows.length; r++) ...[
+            if (r > 0) const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var c = 0; c < columns; c++) ...[
+                  if (c > 0) const SizedBox(width: 10),
+                  Expanded(
+                    child: c < rows[r].length
+                        ? buildCard(rows[r][c])
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final today = dk.dateOnly(ref.watch(todayProvider));
     final selectedDate = dk.dateOnly(ref.watch(selectedDateProvider));
     final selectedKey = dk.dateKey(selectedDate);
 
-    ref.watch(allCheckInsProvider);
+    final allCheckIns =
+        ref.watch(allCheckInsProvider).asData?.value ?? const <CheckIn>[];
     final habitsAsync = ref.watch(habitsProvider);
     final checkIns =
         ref.watch(checkInsByDateProvider(selectedKey)).asData?.value ??
         const <CheckIn>[];
     final scheduleService = ref.watch(scheduleServiceProvider);
+    final prefs = ref.watch(appPrefsProvider).asData?.value ?? const AppPrefs();
+
+    if (habitsAsync.hasValue) {
+      _syncHomeWidgetIfNeeded(habitsAsync.asData!.value, allCheckIns, today);
+    }
 
     final checkInByHabit = {
       for (final checkIn in checkIns) checkIn.habitId: checkIn,
@@ -355,65 +555,14 @@ class _HomePageState extends ConsumerState<HomePage> {
                   );
                 }
 
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (final habit in scheduled)
-                      Builder(
-                        builder: (context) {
-                          final checkIn = checkInByHabit[habit.id];
-                          final count = checkIn?.count ?? 0;
-                          final canCheckIn = scheduleService.canCheckIn(
-                            habit,
-                            selectedDate,
-                            today: today,
-                          );
-                          return HabitCheckInCard(
-                            habit: habit,
-                            count: count,
-                            isDone: scheduleService.isDone(habit, count),
-                            canCheckIn: canCheckIn,
-                            onTapCard: () =>
-                                context.push(Routes.editHabit(habit.id)),
-                            onLongPressCard: () => showCheckInDetailSheet(
-                              context,
-                              habit: habit,
-                              date: selectedKey,
-                              checkIn: checkIn,
-                              canEditRecord: canCheckIn,
-                              save: ({score, mood, note}) => ref
-                                  .read(checkInRepositoryProvider)
-                                  .saveDetail(
-                                    habit.id,
-                                    selectedKey,
-                                    score: score,
-                                    mood: mood,
-                                    note: note,
-                                  ),
-                              editHabit: () =>
-                                  context.push(Routes.editHabit(habit.id)),
-                            ),
-                            onTapCheck: () => _onTapCheck(
-                              context,
-                              habit: habit,
-                              selectedDate: selectedDate,
-                              today: today,
-                              currentCount: count,
-                              canCheckIn: canCheckIn,
-                            ),
-                            onLongPressCheck: habit.dailyTarget > 1
-                                ? () => _onLongPressCheck(
-                                    context,
-                                    habit: habit,
-                                    selectedDate: selectedDate,
-                                    currentCount: count,
-                                    canCheckIn: canCheckIn,
-                                  )
-                                : null,
-                          );
-                        },
-                      ),
-                  ],
+                return _buildHabitCollection(
+                  context,
+                  scheduled: scheduled,
+                  checkInByHabit: checkInByHabit,
+                  selectedDate: selectedDate,
+                  selectedKey: selectedKey,
+                  today: today,
+                  prefs: prefs,
                 );
               },
             ),

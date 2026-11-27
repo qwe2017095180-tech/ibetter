@@ -15,6 +15,7 @@ abstract class HabitRepository {
   Future<int> create(HabitDraft d);
   Future<void> update(Habit h);
   Future<void> setActive(int id, bool active);
+  Future<void> reorder(List<int> orderedIds);
   Future<void> delete(int id);
 }
 

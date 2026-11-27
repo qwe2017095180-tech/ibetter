@@ -2,13 +2,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../app/theme/app_colors.dart';
+import '../../../core/prefs/app_prefs.dart';
 import '../../../core/providers.dart';
 import '../../../domain/date_key.dart' as dk;
 import '../../../domain/models/check_in.dart';
 import '../../../domain/models/habit.dart';
 import '../home_providers.dart';
 
-const _weekdayLabels = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+const _sundayFirstLabels = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+const _mondayFirstLabels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 const _monthAbbr = [
   'JAN',
   'FEB',
@@ -64,6 +66,7 @@ class _CalendarSectionState extends ConsumerState<CalendarSection> {
     final selected = dk.dateOnly(ref.watch(selectedDateProvider));
     final isExpanded = ref.watch(calendarExpandedProvider);
     final days = ref.watch(calendarDaysProvider);
+    final prefs = ref.watch(appPrefsProvider).asData?.value ?? const AppPrefs();
     final range = (from: dk.dateKey(days.first), to: dk.dateKey(days.last));
 
     final habits = ref.watch(habitsProvider).asData?.value ?? const <Habit>[];
@@ -85,7 +88,13 @@ class _CalendarSectionState extends ConsumerState<CalendarSection> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _WeekdayHeaderRow(selectedWeekday: dk.weekdayIndex(selected)),
+        _WeekdayHeaderRow(
+          weekStartsOnMonday: prefs.weekStartsOnMonday,
+          selectedColumn: dk.weekdayColumnIndex(
+            selected,
+            weekStartsOnMonday: prefs.weekStartsOnMonday,
+          ),
+        ),
         const SizedBox(height: 6),
         Stack(
           children: [
@@ -142,6 +151,7 @@ class _CalendarSectionState extends ConsumerState<CalendarSection> {
                                               rows[r][c],
                                             ) ==
                                             true,
+                                        doneTheme: prefs.calendarDoneTheme,
                                         onTap: () => ref
                                             .read(selectedDateProvider.notifier)
                                             .select(rows[r][c]),
@@ -175,12 +185,18 @@ class _CalendarSectionState extends ConsumerState<CalendarSection> {
 }
 
 class _WeekdayHeaderRow extends StatelessWidget {
-  const _WeekdayHeaderRow({required this.selectedWeekday});
+  const _WeekdayHeaderRow({
+    required this.weekStartsOnMonday,
+    required this.selectedColumn,
+  });
 
-  final int selectedWeekday;
+  final bool weekStartsOnMonday;
+  final int selectedColumn;
 
   @override
   Widget build(BuildContext context) {
+    final labels =
+        weekStartsOnMonday ? _mondayFirstLabels : _sundayFirstLabels;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -189,13 +205,12 @@ class _WeekdayHeaderRow extends StatelessWidget {
             Expanded(
               child: Center(
                 child: Text(
-                  _weekdayLabels[i],
+                  labels[i],
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight: i == selectedWeekday
-                        ? FontWeight.w600
-                        : FontWeight.w400,
-                    color: i == selectedWeekday
+                    fontWeight:
+                        i == selectedColumn ? FontWeight.w600 : FontWeight.w400,
+                    color: i == selectedColumn
                         ? AppColors.primary
                         : AppColors.textSecondary,
                   ),
@@ -216,10 +231,9 @@ class _CalendarDayCell extends StatelessWidget {
     required this.isToday,
     required this.isFuture,
     required this.allDone,
+    required this.doneTheme,
     required this.onTap,
   });
-
-  static const _allDoneFill = Color(0xFF34B853);
 
   final DateTime day;
   final double height;
@@ -227,13 +241,14 @@ class _CalendarDayCell extends StatelessWidget {
   final bool isToday;
   final bool isFuture;
   final bool allDone;
+  final CalendarDoneTheme doneTheme;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final Color textColor;
     if (allDone) {
-      textColor = Colors.white;
+      textColor = doneTheme.textColor;
     } else if (isSelected || isToday) {
       textColor = AppColors.primary;
     } else if (isFuture) {
@@ -246,7 +261,7 @@ class _CalendarDayCell extends StatelessWidget {
         (allDone || isSelected || isToday) ? FontWeight.w600 : FontWeight.w400;
 
     final backgroundColor = allDone
-        ? _allDoneFill
+        ? doneTheme.color
         : (isSelected ? Colors.white : AppColors.calendarCell);
 
     return GestureDetector(
@@ -261,40 +276,54 @@ class _CalendarDayCell extends StatelessWidget {
               ? Border.all(color: AppColors.primary, width: 2)
               : null,
         ),
-        child: Center(
-          child: day.day == 1
-              ? Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _monthAbbr[day.month - 1],
+        child: Stack(
+          children: [
+            if (allDone && doneTheme == CalendarDoneTheme.goldStar)
+              const Positioned(
+                right: 2,
+                top: 2,
+                child: Icon(
+                  Icons.star_rounded,
+                  size: 11,
+                  color: Color(0xFFD97706),
+                ),
+              ),
+            Center(
+              child: day.day == 1
+                  ? Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _monthAbbr[day.month - 1],
+                          style: TextStyle(
+                            fontSize: 10,
+                            height: 1.1,
+                            fontWeight: FontWeight.w600,
+                            color: textColor,
+                          ),
+                        ),
+                        Text(
+                          '${day.month}月',
+                          style: TextStyle(
+                            fontSize: 13,
+                            height: 1.15,
+                            fontWeight: fontWeight,
+                            color: textColor,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Text(
+                      '${day.day}',
                       style: TextStyle(
-                        fontSize: 10,
-                        height: 1.1,
-                        fontWeight: FontWeight.w600,
-                        color: textColor,
-                      ),
-                    ),
-                    Text(
-                      '${day.month}月',
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 1.15,
+                        fontSize: 20,
+                        height: 1.0,
                         fontWeight: fontWeight,
                         color: textColor,
                       ),
                     ),
-                  ],
-                )
-              : Text(
-                  '${day.day}',
-                  style: TextStyle(
-                    fontSize: 20,
-                    height: 1.0,
-                    fontWeight: fontWeight,
-                    color: textColor,
-                  ),
-                ),
+            ),
+          ],
         ),
       ),
     );

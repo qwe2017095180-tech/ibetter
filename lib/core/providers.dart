@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/backup_service.dart';
 import '../data/repositories/drift_agenda_repository.dart';
 import '../data/repositories/drift_repositories.dart';
 import '../data/repositories/repositories.dart';
@@ -39,26 +40,125 @@ final historyServiceProvider = Provider((ref) => const HistoryService());
 
 final appPrefsStoreProvider = Provider<AppPrefsStore>((ref) => FileAppPrefsStore());
 
+final backupServiceProvider = Provider<BackupService>(
+  (ref) => BackupService(ref.watch(databaseProvider), ref.watch(appPrefsStoreProvider)),
+);
+
 class AppPrefsNotifier extends AsyncNotifier<AppPrefs> {
   @override
   Future<AppPrefs> build() => ref.watch(appPrefsStoreProvider).load();
 
-  Future<void> recordShare(DateTime today) async {
-    final current = state.asData?.value ?? const AppPrefs();
-    final updated = current.copyWith(
-      shareCount: current.shareCount + 1,
-      lastShareDate: dk.dateKey(today),
-    );
+  Future<void> _commit(AppPrefs updated) async {
     state = AsyncData(updated);
     await ref.read(appPrefsStoreProvider).save(updated);
+  }
+
+  Future<void> reload() async {
+    final loaded = await ref.read(appPrefsStoreProvider).load();
+    state = AsyncData(loaded);
+  }
+
+  Future<void> recordShare(DateTime today) async {
+    final current = state.asData?.value ?? const AppPrefs();
+    await _commit(current.copyWith(
+      shareCount: current.shareCount + 1,
+      lastShareDate: dk.dateKey(today),
+    ));
   }
 
   Future<void> markAchievementsSeen(int totalCount) async {
     final current = state.asData?.value ?? const AppPrefs();
     if (totalCount <= current.seenAchievementCount) return;
-    final updated = current.copyWith(seenAchievementCount: totalCount);
-    state = AsyncData(updated);
-    await ref.read(appPrefsStoreProvider).save(updated);
+    await _commit(current.copyWith(seenAchievementCount: totalCount));
+  }
+
+  Future<void> updateProfile({
+    String? nickname,
+    String? handle,
+    String? bio,
+    String? avatarPreset,
+    String? avatarImagePath,
+    bool clearAvatarImage = false,
+    String? coverPreset,
+    String? coverImagePath,
+    bool clearCoverImage = false,
+  }) async {
+    final current = state.asData?.value ?? const AppPrefs();
+    await _commit(current.copyWith(
+      nickname: nickname,
+      handle: handle,
+      bio: bio,
+      avatarPreset: avatarPreset,
+      avatarImagePath: avatarImagePath,
+      clearAvatarImage: clearAvatarImage,
+      coverPreset: coverPreset,
+      coverImagePath: coverImagePath,
+      clearCoverImage: clearCoverImage,
+    ));
+  }
+
+  Future<void> markInboxRead(String id) async {
+    final current = state.asData?.value ?? const AppPrefs();
+    if (current.readInboxIds.contains(id)) return;
+    await _commit(current.copyWith(readInboxIds: [...current.readInboxIds, id]));
+  }
+
+  Future<void> setCardStyle(CardStyle style) async {
+    final current = state.asData?.value ?? const AppPrefs();
+    await _commit(current.copyWith(cardStyle: style));
+  }
+
+  Future<void> setCardLayout(CardLayout layout) async {
+    final current = state.asData?.value ?? const AppPrefs();
+    await _commit(current.copyWith(cardLayout: layout));
+  }
+
+  Future<void> setCalendarDoneTheme(CalendarDoneTheme theme) async {
+    final current = state.asData?.value ?? const AppPrefs();
+    await _commit(current.copyWith(calendarDoneTheme: theme));
+  }
+
+  Future<void> setWeekStartsOnMonday(bool value) async {
+    final current = state.asData?.value ?? const AppPrefs();
+    await _commit(current.copyWith(weekStartsOnMonday: value));
+  }
+
+  Future<void> setSoundEnabled(bool enabled) async {
+    final current = state.asData?.value ?? const AppPrefs();
+    await _commit(current.copyWith(soundEnabled: enabled));
+  }
+
+  Future<void> setAchievementDisplayStyle(CelebrationStyle style) async {
+    final current = state.asData?.value ?? const AppPrefs();
+    await _commit(current.copyWith(achievementDisplayStyle: style));
+  }
+
+  Future<void> setPerfectDayDisplayStyle(CelebrationStyle style) async {
+    final current = state.asData?.value ?? const AppPrefs();
+    await _commit(current.copyWith(perfectDayDisplayStyle: style));
+  }
+
+  Future<void> setReportDisplayStyle(CelebrationStyle style) async {
+    final current = state.asData?.value ?? const AppPrefs();
+    await _commit(current.copyWith(reportDisplayStyle: style));
+  }
+
+  Future<void> setReportReminder({bool? enabled, int? minutesOfDay}) async {
+    final current = state.asData?.value ?? const AppPrefs();
+    await _commit(current.copyWith(
+      reportReminderEnabled: enabled,
+      reportReminderMinutes: minutesOfDay,
+    ));
+  }
+
+  Future<void> setPasscode(String pin) async {
+    final current = state.asData?.value ?? const AppPrefs();
+    await _commit(current.copyWith(passcodeEnabled: true, passcode: pin));
+  }
+
+  Future<void> disablePasscode() async {
+    final current = state.asData?.value ?? const AppPrefs();
+    await _commit(current.copyWith(passcodeEnabled: false, clearPasscode: true));
   }
 }
 

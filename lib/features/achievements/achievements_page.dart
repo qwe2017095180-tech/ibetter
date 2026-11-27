@@ -4,12 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../app/theme/app_colors.dart';
+import '../../../core/prefs/app_prefs.dart';
 import '../../../core/providers.dart';
 import '../../../core/widgets/common.dart';
 import '../../../domain/date_key.dart' as dk;
 import '../../../domain/models/check_in.dart';
 import '../../../domain/models/habit.dart';
 import '../../../domain/services/achievement_service.dart';
+import '../home/widgets/celebration_banner.dart';
 import '../home/widgets/perfect_day_dialog.dart';
 import '../icon_picker/icon_registry.dart';
 import 'widgets/achievement_badge.dart';
@@ -98,12 +100,32 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
       appBar: _AchievementsTopBar(
         onTapReportCard: !hasData
             ? null
-            : () => showReportCardSheet(
-                  context,
-                  stats: stats,
-                  today: today,
-                  onShared: () => ref.read(appPrefsProvider.notifier).recordShare(today),
-                ),
+            : () {
+                void openSheet() {
+                  showReportCardSheet(
+                    context,
+                    stats: stats,
+                    today: today,
+                    onShared: () =>
+                        ref.read(appPrefsProvider.notifier).recordShare(today),
+                  );
+                }
+
+                if (prefs?.reportDisplayStyle == CelebrationStyle.banner) {
+                  showCelebrationBanner(
+                    context,
+                    title: '新成绩单已生成',
+                    subtitle: '点击查看 ${today.year} 年打卡成绩单',
+                    color: AppColors.primary,
+                    onTap: () {
+                      if (!mounted) return;
+                      openSheet();
+                    },
+                  );
+                } else {
+                  openSheet();
+                }
+              },
       ),
       body: _buildBody(
         context,

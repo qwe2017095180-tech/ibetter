@@ -23,11 +23,16 @@ DateTime today() => dateOnly(DateTime.now());
 /// DST-safe day arithmetic.
 DateTime addDays(DateTime d, int days) => DateTime(d.year, d.month, d.day + days);
 
-/// 0 = Sunday ... 6 = Saturday (matches the app calendar, week starts Sunday).
+/// 0 = Sunday ... 6 = Saturday.
 int weekdayIndex(DateTime d) => d.weekday % 7;
 
-/// Sunday of the week containing [d].
-DateTime startOfWeek(DateTime d) => addDays(dateOnly(d), -weekdayIndex(d));
+/// 0-based column index in a 7-column calendar grid, honoring [weekStartsOnMonday].
+int weekdayColumnIndex(DateTime d, {bool weekStartsOnMonday = false}) =>
+    weekStartsOnMonday ? (d.weekday - 1) : weekdayIndex(d);
+
+/// First day of the week containing [d] (Sunday by default, or Monday when [weekStartsOnMonday]).
+DateTime startOfWeek(DateTime d, {bool weekStartsOnMonday = false}) =>
+    addDays(dateOnly(d), -weekdayColumnIndex(d, weekStartsOnMonday: weekStartsOnMonday));
 
 /// First day of the month containing [d].
 DateTime startOfMonth(DateTime d) => DateTime(d.year, d.month, 1);

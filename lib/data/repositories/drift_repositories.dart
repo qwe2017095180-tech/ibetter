@@ -118,6 +118,14 @@ class DriftHabitRepository implements HabitRepository {
   }
 
   @override
+  Future<void> reorder(List<int> orderedIds) => _db.transaction(() async {
+        for (var i = 0; i < orderedIds.length; i++) {
+          await (_db.update(_db.habits)..where((t) => t.id.equals(orderedIds[i])))
+              .write(HabitsCompanion(sortOrder: Value(i)));
+        }
+      });
+
+  @override
   Future<void> delete(int id) async {
     await (_db.delete(_db.habits)..where((t) => t.id.equals(id))).go();
   }

@@ -14,6 +14,9 @@ const String habitRemindersChannelName = '打卡提醒';
 const String habitRemindersChannelDescription = '习惯定时打卡提醒';
 const String defaultReminderBody = '该打卡啦！';
 const String habitPayloadPrefix = 'habit:';
+const int weeklyReportNotificationId = 99990001;
+const String weeklyReportPayload = 'report:weekly';
+const int testNotificationId = 99990002;
 
 /// Sentinel `weekdayIdx` representing a single daily repeating notification
 /// (`weekdaysMask == 127`).
@@ -449,6 +452,48 @@ class LocalNotificationService implements NotificationService {
         }
       }
     }
+  }
+
+  @override
+  Future<void> syncReportReminder({
+    required bool enabled,
+    required int minutesOfDay,
+  }) async {
+    if (!_isSupportedPlatform) return;
+    await _adapter.cancel(id: weeklyReportNotificationId);
+    if (!enabled) return;
+    final minutes = minutesOfDay.clamp(0, 1439);
+    await _adapter.zonedSchedule(
+      id: weeklyReportNotificationId,
+      title: '每周成绩单已生成',
+      body: '来看看本周你在轻松打卡的坚持成果吧！',
+      scheduledDate: nextInstance(_now(), minutes, 0),
+      notificationDetails: _notificationDetails,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+      payload: weeklyReportPayload,
+    );
+  }
+
+  @override
+  Future<bool> showTestNotification() async {
+    if (!_isSupportedPlatform) return false;
+    final granted = await requestPermission();
+    if (!granted) return false;
+    final now = _now();
+    await _adapter.zonedSchedule(
+      id: testNotificationId,
+      title: '轻松打卡 · 通知测试成功',
+      body: '提醒推送通道工作正常，打卡提醒将准时送达！',
+      scheduledDate: tz.TZDateTime.from(
+        now.add(const Duration(seconds: 2)),
+        now.location,
+      ),
+      notificationDetails: _notificationDetails,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      payload: 'test:ping',
+    );
+    return true;
   }
 
   int? _parseHabitIdFromPayload(String? payload) {

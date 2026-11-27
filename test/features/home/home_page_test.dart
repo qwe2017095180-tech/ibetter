@@ -587,4 +587,113 @@ void main() {
     await dismissCelebrationDialogs(tester);
     await disposeWidgetTree(tester);
   });
+
+  testWidgets(
+      'supports white card style, compact/ultraCompact layouts, Monday week start, and goldStar calendar theme',
+      (tester) async {
+    tester.view.physicalSize = const Size(412, 915);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    prefsStore = MemoryAppPrefsStore(
+      const AppPrefs(
+        cardStyle: CardStyle.white,
+        cardLayout: CardLayout.compact,
+        calendarDoneTheme: CalendarDoneTheme.goldStar,
+        weekStartsOnMonday: true,
+      ),
+    );
+
+    await tester.runAsync(() async {
+      final h1 = await habitRepo.create(dailyDraft('早起喝水', motto: '清清爽爽'));
+      await habitRepo.create(dailyDraft('冥想十分钟', motto: '静心呼吸'));
+      await habitRepo.create(dailyDraft('阅读半小时', motto: '日积月累'));
+      // Complete all scheduled habits on 2026-11-23? Only 1 habit? All 3 on 2026-11-24 after creating them starting 2026-11-24.
+      await checkInRepo.setCount(h1, '2026-11-24', 1);
+    });
+
+    // Make only h1 active/all-done on 2026-11-24? No, let's complete all 3 on 2026-11-24.
+    await tester.runAsync(() async {
+      final all = await habitRepo.watchAll().first;
+      for (final h in all) {
+        await checkInRepo.setCount(h.id, '2026-11-24', 1);
+      }
+    });
+
+    await tester.pumpWidget(buildApp());
+    await tester.pumpAndSettle();
+
+    // Monday first -> '周一' is leftmost, '周日' is rightmost.
+    expect(
+      tester.getTopLeft(find.text('周一')).dx,
+      lessThan(tester.getTopLeft(find.text('周二')).dx),
+    );
+    expect(
+      tester.getTopLeft(find.text('周日')).dx,
+      greaterThan(tester.getTopLeft(find.text('周六')).dx),
+    );
+
+    // Gold star icon shown on all-done day cell.
+    expect(find.byIcon(Icons.star_rounded), findsAtLeastNWidgets(1));
+
+    // Compact layout renders habits in 2-column grid (mottos hidden, titles visible side by side).
+    expect(find.text('早起喝水'), findsOneWidget);
+    expect(find.text('冥想十分钟'), findsOneWidget);
+    expect(find.text('清清爽爽'), findsNothing);
+    expect(
+      tester.getTopLeft(find.text('冥想十分钟')).dy,
+      closeTo(tester.getTopLeft(find.text('早起喝水')).dy, 16),
+    );
+
+    // Switch live to ultraCompact (3-column grid) & check layout without overflow.
+    final container = ProviderScope.containerOf(tester.element(find.byType(HomePage)));
+    await container.read(appPrefsProvider.notifier).setCardLayout(CardLayout.ultraCompact);
+    await tester.pumpAndSettle();
+
+    expect(find.text('阅读半小时'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('阅读半小时')).dy,
+      closeTo(tester.getTopLeft(find.text('早起喝水')).dy, 16),
+    );
+
+    await disposeWidgetTree(tester);
+  });
+
+  testWidgets('banner celebration style displays floating top banner instead of dialog',
+      (tester) async {
+    tester.view.physicalSize = const Size(412, 915);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    prefsStore = MemoryAppPrefsStore(
+      const AppPrefs(
+        achievementDisplayStyle: CelebrationStyle.banner,
+        perfectDayDisplayStyle: CelebrationStyle.banner,
+      ),
+    );
+
+    late int habitId;
+    await tester.runAsync(() async {
+      habitId = await habitRepo.create(dailyDraft('练字二十分钟'));
+    });
+
+    await tester.pumpWidget(buildApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(ValueKey('habit_checkbox_$habitId')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // Top floating banner appears instead of full modal dialogs.
+    expect(find.byKey(const ValueKey('celebration_top_banner')), findsAtLeastNWidgets(1));
+    expect(find.text('🤩 保存完美的一天'), findsNothing);
+
+    // Dismiss floating banners cleanly so no timers remain active.
+    while (find.byKey(const ValueKey('celebration_top_banner')).evaluate().isNotEmpty) {
+      await tester.tap(find.byKey(const ValueKey('celebration_top_banner')).first);
+      await tester.pumpAndSettle();
+    }
+
+    await disposeWidgetTree(tester);
+  });
 }

@@ -21,6 +21,15 @@ abstract class NotificationService {
 
   /// Re-sync everything (e.g. app start / timezone change).
   Future<void> resyncAll(List<Habit> habits, List<Reminder> reminders);
+
+  /// Schedule or cancel the weekly report reminder (Sunday at [minutesOfDay]).
+  Future<void> syncReportReminder({
+    required bool enabled,
+    required int minutesOfDay,
+  });
+
+  /// Fires an immediate test notification (for the notification troubleshooting page).
+  Future<bool> showTestNotification();
 }
 
 /// STUB no-op — WP8 replaces the provider body with the real implementation.
@@ -35,6 +44,13 @@ class NoopNotificationService implements NotificationService {
   Future<void> cancelHabit(int habitId) async {}
   @override
   Future<void> resyncAll(List<Habit> habits, List<Reminder> reminders) async {}
+  @override
+  Future<void> syncReportReminder({
+    required bool enabled,
+    required int minutesOfDay,
+  }) async {}
+  @override
+  Future<bool> showTestNotification() async => true;
 }
 
 final notificationServiceProvider = Provider<NotificationService>((ref) => LocalNotificationService());

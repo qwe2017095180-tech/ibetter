@@ -31,6 +31,11 @@ Future<void> _resyncReminders(
     final habits = await container.read(habitRepositoryProvider).watchAll().first;
     final reminders = await container.read(reminderRepositoryProvider).getAll();
     await notifications.resyncAll(habits, reminders);
+    final prefs = await container.read(appPrefsStoreProvider).load();
+    await notifications.syncReportReminder(
+      enabled: prefs.reportReminderEnabled,
+      minutesOfDay: prefs.reportReminderMinutes,
+    );
   } catch (e, st) {
     debugPrint('Notification resync failed: $e\n$st');
   }

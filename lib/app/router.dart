@@ -1,7 +1,8 @@
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 
+import '../core/prefs/app_prefs.dart';
 import '../core/providers.dart';
 import '../core/widgets/common.dart';
 import '../domain/date_key.dart' as dk;
@@ -9,11 +10,16 @@ import '../domain/services/schedule_service.dart';
 import '../features/achievements/achievements_page.dart';
 import '../features/history/history_page.dart';
 import '../features/home/home_page.dart';
+import '../features/me/edit_profile_sheet.dart';
+import '../features/me/me_page.dart';
 import '../features/more/more_page.dart';
-import '../features/placeholders/placeholder_pages.dart';
 import '../features/project_editor/project_editor_page.dart';
 import '../features/projects/project_detail_page.dart';
 import '../features/projects/projects_page.dart';
+import '../features/settings/passcode_page.dart';
+import '../features/settings/project_sort_page.dart';
+import '../features/settings/settings_page.dart';
+import '../features/settings/widget_guide_page.dart';
 import '../features/updates/update_dialog.dart';
 import '../features/updates/update_models.dart';
 import '../features/updates/update_providers.dart';
@@ -29,6 +35,12 @@ abstract final class Routes {
 
   /// History timeline page.
   static const history = '/history';
+
+  /// Settings & sub-pages.
+  static const settings = '/settings';
+  static const projectSort = '/settings/sort';
+  static const widgetGuide = '/settings/widget-guide';
+  static const passcode = '/settings/passcode';
 
   /// Project detail / stats page.
   static String projectDetail(int id) => '/projects/$id';
@@ -68,6 +80,26 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: rootKey,
         path: Routes.history,
         builder: (_, _) => const HistoryPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootKey,
+        path: Routes.settings,
+        builder: (_, _) => const SettingsPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootKey,
+        path: Routes.projectSort,
+        builder: (_, _) => const ProjectSortPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootKey,
+        path: Routes.widgetGuide,
+        builder: (_, _) => const WidgetGuidePage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootKey,
+        path: Routes.passcode,
+        builder: (_, _) => const PasscodePage(),
       ),
       GoRoute(
         parentNavigatorKey: rootKey,
@@ -157,6 +189,7 @@ class _ShellState extends ConsumerState<_Shell> {
     final badgeStatus = ref.watch(todayBadgeStatusProvider);
     final allDoneToday = badgeStatus.scheduled > 0 && badgeStatus.pending == 0;
     final today = ref.watch(todayProvider);
+    final prefs = ref.watch(appPrefsProvider).asData?.value ?? const AppPrefs();
     final shell = widget.shell;
     return Scaffold(
       body: shell,
@@ -195,10 +228,15 @@ class _ShellState extends ConsumerState<_Shell> {
                   ),
                 ),
                 _TabItem(
+                  key: const ValueKey('bottom_tab_me'),
                   selected: shell.currentIndex == 3,
                   onTap: () => _go(3),
-                  child: Icon(Icons.account_circle,
-                      size: 32, color: shell.currentIndex == 3 ? AppColors.primary : AppColors.textHint),
+                  child: ProfileAvatar(
+                    prefs: prefs,
+                    size: 32,
+                    borderWidth: shell.currentIndex == 3 ? 2 : 1,
+                    borderColor: shell.currentIndex == 3 ? AppColors.primary : Colors.white,
+                  ),
                 ),
                 _TabItem(
                   selected: shell.currentIndex == 4,
@@ -219,6 +257,7 @@ class _ShellState extends ConsumerState<_Shell> {
 
 class _TabItem extends StatelessWidget {
   const _TabItem({
+    super.key,
     required this.selected,
     required this.onTap,
     required this.child,

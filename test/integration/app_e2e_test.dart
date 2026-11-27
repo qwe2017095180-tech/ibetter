@@ -11,6 +11,7 @@ import 'package:ibetter/core/providers.dart';
 import 'package:ibetter/data/repositories/drift_repositories.dart';
 import 'package:ibetter/domain/models/habit.dart';
 import 'package:ibetter/domain/models/reminder.dart';
+import 'package:ibetter/features/me/edit_profile_sheet.dart';
 import 'package:ibetter/features/reminders/notification_service.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -251,9 +252,17 @@ void main() {
       expect(find.text('我的成就'), findsOneWidget);
       expect(find.text('成绩单'), findsOneWidget);
 
-      await tester.tap(find.byIcon(Icons.account_circle));
+      await tester.tap(find.byType(ProfileAvatar).first);
       await tester.pumpAndSettle();
-      expect(find.text('我的'), findsOneWidget);
+      expect(find.text('修改资料'), findsOneWidget);
+      expect(find.text('我的收件箱'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('me_settings_button')));
+      await tester.pumpAndSettle();
+      expect(find.text('设置'), findsOneWidget);
+      expect(find.text('我的项目排序'), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.arrow_back_ios_new));
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byIcon(Icons.more_horiz));
       await tester.pumpAndSettle();

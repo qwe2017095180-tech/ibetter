@@ -3,7 +3,8 @@ import 'package:material_ui/material_ui.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../domain/date_key.dart' as dk;
 
-const _weekdayLabels = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+const _sundayFirstLabels = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+const _mondayFirstLabels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 const _monthAbbr = [
   'JAN',
   'FEB',
@@ -29,6 +30,7 @@ class DetailMonthlyCalendar extends StatelessWidget {
     required this.onPrevMonth,
     required this.onNextMonth,
     required this.onDayTap,
+    this.weekStartsOnMonday = false,
   });
 
   final DateTime displayedMonth;
@@ -37,13 +39,15 @@ class DetailMonthlyCalendar extends StatelessWidget {
   final VoidCallback onPrevMonth;
   final VoidCallback? onNextMonth;
   final ValueChanged<DateTime> onDayTap;
+  final bool weekStartsOnMonday;
 
   static const Color completedCellFill = Color(0xFF5698DF);
 
   @override
   Widget build(BuildContext context) {
     final firstOfMonth = DateTime(displayedMonth.year, displayedMonth.month, 1);
-    final gridStart = dk.startOfWeek(firstOfMonth);
+    final gridStart = dk.startOfWeek(firstOfMonth, weekStartsOnMonday: weekStartsOnMonday);
+    final weekdayLabels = weekStartsOnMonday ? _mondayFirstLabels : _sundayFirstLabels;
     final days = List<DateTime>.generate(42, (i) => dk.addDays(gridStart, i));
     final abbr = _monthAbbr[displayedMonth.month - 1];
     final headerText = displayedMonth.year == today.year
@@ -89,7 +93,7 @@ class DetailMonthlyCalendar extends StatelessWidget {
           const SizedBox(height: 4),
           Row(
             children: [
-              for (final label in _weekdayLabels)
+              for (final label in weekdayLabels)
                 Expanded(
                   child: Center(
                     child: Padding(

@@ -79,3 +79,15 @@ Flutter binary: `export PATH="$HOME/development/flutter/bin:$PATH"`
 
 ## 轻松打卡 1.2.1
 - 恢复原有配色与「更多」品牌卡片。点击首页打卡卡片直接编辑项目，长按可打开当日已保存的评分、心情和备注。保留新应用名称和启动图标。
+
+## 轻松打卡 1.4.0
+- 新增「我的」个人主页（`lib/features/me/`）：顶部封面与重叠头像（支持预设配色/图标及 Android 相册选图）、昵称/账号 ID/个性签名编辑（同步显示于底部导航栏头像）、4 项核心 KPI 统计，以及本地「我的收件箱」（未读计数、`NEW` 徽标与详情弹窗）。
+- 新增完整「设置」中心（`lib/features/settings/`）：
+  - 项目：`我的项目排序`（`ReorderableListView` 拖拽排序并持久化至 SQLite `sortOrder`）、`选择卡片风格`（`彩色` / `纯白`）、`选择卡片布局`（`标准` / `紧凑` 2 列 / `超紧凑` 3 列）、6 款`日历达成颜色`（含金色星标 `goldStar` 主题）。
+  - 隐私与安全：`密码保护`（4 位 PIN 设置/修改/关闭与 `AppLockGate` 冷启动锁屏）。
+  - 通知：`每周/月成绩单提醒`开关、提醒时间选择，以及`收不到推送？排查方案`弹窗与 2 秒测试通知触发。
+  - 挂件：`调整桌面小部件`预览引导页与 Android 原生桌面挂件（`CheckInWidgetProvider.kt`、`widget_checkin.xml`）。
+  - 显示和效果：`每周第一天为`（星期日 / 星期一，联动首页及项目详情月历）、`音效`开关、`成就 / 完美的一天 / 新成绩单`显示样式（`卡片`弹窗 vs `横幅`顶部浮动提醒）。
+  - 数据：`备份与恢复`（全量习惯、打卡记录、提醒与 `AppPrefs` 偏好 JSON 导出/剪贴板复制/本地备份及覆盖恢复）。
+- 扩展 Android 原生通道（`MainActivity.kt` 注册 `com.ibetter.clone.ibetter/native_bridge`，提供 `pickImage` 与 `updateHomeWidget`），保留原有 `UPDATER_CHANNEL` 与轻松日程局域网同步功能。
+- 验证：`flutter analyze` 0 issues；`flutter test --timeout=30s` 125/125 全部通过。

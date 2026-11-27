@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/prefs/app_prefs.dart';
 import '../../core/providers.dart';
 import '../../domain/date_key.dart' as dk;
 import '../../domain/models/agenda_item.dart';
@@ -21,27 +22,27 @@ class CalendarExpandedNotifier extends Notifier<bool> {
 final calendarExpandedProvider =
     NotifierProvider<CalendarExpandedNotifier, bool>(CalendarExpandedNotifier.new);
 
-/// Start Sunday of the 5-week expanded calendar window.
-///
-/// Defaults to the Sunday of the week 1 week before [todayProvider]'s week so
-/// today appears in row 2. Automatically recenters if [selectedDateProvider]
-/// moves outside the visible 35-day window.
+/// Start day of the 5-week expanded calendar window (Sunday or Monday per [AppPrefs.weekStartsOnMonday]).
 class CalendarWindowStartNotifier extends Notifier<DateTime> {
   @override
   DateTime build() {
     final today = dk.dateOnly(ref.watch(todayProvider));
+    final mondayFirst = ref.watch(
+      appPrefsProvider.select((a) => a.asData?.value.weekStartsOnMonday ?? false),
+    );
     ref.listen<DateTime>(selectedDateProvider, (_, next) {
       final d = dk.dateOnly(next);
+      final monday = ref.read(appPrefsProvider).asData?.value.weekStartsOnMonday ?? false;
       if (!ref.read(calendarExpandedProvider)) {
-        state = dk.addDays(dk.startOfWeek(d), -7);
+        state = dk.addDays(dk.startOfWeek(d, weekStartsOnMonday: monday), -7);
         return;
       }
       final end = dk.addDays(state, 34);
       if (d.isBefore(state) || d.isAfter(end)) {
-        state = dk.addDays(dk.startOfWeek(d), -7);
+        state = dk.addDays(dk.startOfWeek(d, weekStartsOnMonday: monday), -7);
       }
     });
-    return dk.addDays(dk.startOfWeek(today), -7);
+    return dk.addDays(dk.startOfWeek(today, weekStartsOnMonday: mondayFirst), -7);
   }
 
   /// Moves the 5-week window by [weeks] (positive = forward, negative = back).
@@ -51,7 +52,8 @@ class CalendarWindowStartNotifier extends Notifier<DateTime> {
 
   /// Recenters the 5-week window so [date]'s week sits in row 2.
   void jumpToDate(DateTime date) {
-    state = dk.addDays(dk.startOfWeek(dk.dateOnly(date)), -7);
+    final monday = ref.read(appPrefsProvider).asData?.value.weekStartsOnMonday ?? false;
+    state = dk.addDays(dk.startOfWeek(dk.dateOnly(date), weekStartsOnMonday: monday), -7);
   }
 }
 
@@ -63,9 +65,12 @@ final calendarWindowStartProvider =
 /// Visible calendar days: 35 days when expanded, 7 days when collapsed.
 final calendarDaysProvider = Provider<List<DateTime>>((ref) {
   final isExpanded = ref.watch(calendarExpandedProvider);
+  final mondayFirst = ref.watch(
+    appPrefsProvider.select((a) => a.asData?.value.weekStartsOnMonday ?? false),
+  );
   if (!isExpanded) {
     final selected = dk.dateOnly(ref.watch(selectedDateProvider));
-    final weekStart = dk.startOfWeek(selected);
+    final weekStart = dk.startOfWeek(selected, weekStartsOnMonday: mondayFirst);
     return List.generate(7, (i) => dk.addDays(weekStart, i));
   }
   final windowStart = ref.watch(calendarWindowStartProvider);

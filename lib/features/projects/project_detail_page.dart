@@ -150,6 +150,12 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
                         displayedMonth: _displayedMonth,
                         today: today,
                         doneDates: doneDates,
+                        weekStartsOnMonday: ref
+                                .watch(appPrefsProvider)
+                                .asData
+                                ?.value
+                                .weekStartsOnMonday ??
+                            false,
                         onPrevMonth: () => _shiftMonth(-1, today),
                         onNextMonth: canGoNextMonth ? () => _shiftMonth(1, today) : null,
                         onDayTap: (day) => _onDayTap(

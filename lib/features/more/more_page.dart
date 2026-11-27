@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/app_brand.dart';
+import '../../app/router.dart';
 import '../../app/theme/app_colors.dart';
 import '../../core/widgets/common.dart';
 import '../icon_picker/icon_registry.dart';
@@ -390,10 +392,22 @@ class _MorePageState extends ConsumerState<MorePage> {
             ),
           ),
           SectionCard(
-            child: _MoreRow(
-              icon: Icons.info_outline,
-              title: '开源图标与数据说明',
-              onTap: _showAttributionDialog,
+            child: Column(
+              children: [
+                _MoreRow(
+                  key: const ValueKey('more_settings_row'),
+                  icon: Icons.tune,
+                  title: '应用设置',
+                  subtitle: '项目排序、卡片风格布局、日历颜色、密码与备份',
+                  onTap: () => context.push(Routes.settings),
+                ),
+                const Divider(height: 1, thickness: 1, color: AppColors.divider),
+                _MoreRow(
+                  icon: Icons.info_outline,
+                  title: '开源图标与数据说明',
+                  onTap: _showAttributionDialog,
+                ),
+              ],
             ),
           ),
         ],
