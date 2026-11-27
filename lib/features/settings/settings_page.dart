@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/router.dart';
 import '../../app/theme/app_colors.dart';
+import '../../core/platform/native_bridge.dart';
 import '../../core/prefs/app_prefs.dart';
 import '../../core/providers.dart';
 import '../../core/widgets/common.dart';
@@ -101,6 +104,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
     if (chosen == null || !mounted) return;
     await ref.read(appPrefsProvider.notifier).setWeekStartsOnMonday(chosen);
+  }
+
+  Future<void> _toggleSound(bool enabled) async {
+    await ref.read(appPrefsProvider.notifier).setSoundEnabled(enabled);
+    if (enabled) {
+      unawaited(ref.read(nativeBridgeProvider).playSound(AppSound.checkIn));
+    }
   }
 
   Future<void> _showNotificationTroubleshoot() async {
@@ -417,12 +427,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 title: '音效',
                 trailing: Switch(
                   value: prefs.soundEnabled,
-                  onChanged: (v) =>
-                      ref.read(appPrefsProvider.notifier).setSoundEnabled(v),
+                  onChanged: _toggleSound,
                 ),
-                onTap: () => ref
-                    .read(appPrefsProvider.notifier)
-                    .setSoundEnabled(!prefs.soundEnabled),
+                onTap: () => _toggleSound(!prefs.soundEnabled),
               ),
               const _HairlineDivider(),
               _SettingsRow(

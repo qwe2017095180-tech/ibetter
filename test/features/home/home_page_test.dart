@@ -8,6 +8,7 @@ import 'package:ibetter/app/router.dart';
 import 'package:ibetter/app/theme/app_colors.dart';
 import 'package:ibetter/app/theme/app_theme.dart';
 import 'package:ibetter/core/db/app_database.dart';
+import 'package:ibetter/core/platform/native_bridge.dart';
 import 'package:ibetter/core/prefs/app_prefs.dart';
 import 'package:ibetter/core/providers.dart';
 import 'package:ibetter/data/repositories/drift_repositories.dart';
@@ -19,6 +20,7 @@ void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
 
   final fixedToday = DateTime(2026, 11, 24); // Tuesday
+  final fixedNow = DateTime(2026, 11, 24, 12); // Daytime noon
 
   late AppDatabase db;
   late DriftHabitRepository habitRepo;
@@ -28,7 +30,7 @@ void main() {
   setUp(() {
     db = AppDatabase(NativeDatabase.memory());
     habitRepo = DriftHabitRepository(db);
-    checkInRepo = DriftCheckInRepository(db);
+    checkInRepo = DriftCheckInRepository(db, now: () => fixedNow);
     prefsStore = MemoryAppPrefsStore();
   });
 
@@ -36,7 +38,7 @@ void main() {
     await db.close();
   });
 
-  Widget buildApp({GoRouter? router}) {
+  Widget buildApp({GoRouter? router, NativeBridge? bridge}) {
     final appRouter =
         router ??
         GoRouter(
@@ -65,7 +67,9 @@ void main() {
       overrides: [
         databaseProvider.overrideWithValue(db),
         todayProvider.overrideWithValue(fixedToday),
+        nowProvider.overrideWithValue(() => fixedNow),
         appPrefsStoreProvider.overrideWithValue(prefsStore),
+        if (bridge != null) nativeBridgeProvider.overrideWithValue(bridge),
       ],
       child: MaterialApp.router(
         theme: AppTheme.light(),
@@ -696,4 +700,58 @@ void main() {
 
     await disposeWidgetTree(tester);
   });
+
+  testWidgets('plays native check-in, uncheck, perfect day, and achievement sounds unless disabled',
+      (tester) async {
+    final spyBridge = _SpySoundBridge();
+
+    late int habitId;
+    await tester.runAsync(() async {
+      habitId = await habitRepo.create(dailyDraft('弹吉他'));
+    });
+
+    await tester.pumpWidget(buildApp(bridge: spyBridge));
+    await tester.pumpAndSettle();
+
+    // Checking in plays checkIn + perfectDay immediately, then achievement after closing PerfectDayDialog.
+    await tester.tap(find.byKey(ValueKey('habit_checkbox_$habitId')));
+    await tester.pumpAndSettle();
+    expect(spyBridge.playedSounds, [AppSound.checkIn, AppSound.perfectDay]);
+
+    await tester.tap(find.byIcon(Icons.close).first);
+    await tester.pumpAndSettle();
+    expect(
+      spyBridge.playedSounds,
+      [AppSound.checkIn, AppSound.perfectDay, AppSound.achievement],
+    );
+    await dismissCelebrationDialogs(tester);
+
+    // Unchecking plays uncheck.
+    spyBridge.playedSounds.clear();
+    await tester.tap(find.byKey(ValueKey('habit_checkbox_$habitId')));
+    await tester.pumpAndSettle();
+    expect(spyBridge.playedSounds, [AppSound.uncheck]);
+
+    // Turning soundEnabled off suppresses all sounds.
+    spyBridge.playedSounds.clear();
+    final container = ProviderScope.containerOf(tester.element(find.byType(HomePage)));
+    await container.read(appPrefsProvider.notifier).setSoundEnabled(false);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(ValueKey('habit_checkbox_$habitId')));
+    await tester.pumpAndSettle();
+    expect(spyBridge.playedSounds, isEmpty);
+    await dismissCelebrationDialogs(tester);
+
+    await disposeWidgetTree(tester);
+  });
+}
+
+class _SpySoundBridge extends NativeBridge {
+  final List<AppSound> playedSounds = [];
+
+  @override
+  Future<void> playSound(AppSound sound) async {
+    playedSounds.add(sound);
+  }
 }

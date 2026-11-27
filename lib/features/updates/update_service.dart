@@ -339,7 +339,11 @@ class UpdateService {
       if (sourceIdx > 0) {
         await _deleteQuietly(partFile);
         final hostLabel = Uri.tryParse(prefix)?.host ?? prefix;
-        onStatus?.call('直连受阻，正在切换加速镜像（$hostLabel）…');
+        onStatus?.call(
+          prefix.isEmpty
+              ? '加速镜像受阻，正在尝试直连 GitHub…'
+              : '当前线路受阻，正在切换加速镜像（$hostLabel）…',
+        );
       } else if (prefix.isNotEmpty) {
         final hostLabel = Uri.tryParse(prefix)?.host ?? prefix;
         onStatus?.call('正在通过加速镜像（$hostLabel）下载…');
@@ -372,10 +376,17 @@ class UpdateService {
   }
 
   List<String> _buildCandidatePrefixes(String rawUrl, UpdateConfig config) {
-    final explicit = UpdateConfig.normalizeMirrorPrefix(config.mirrorPrefix);
-    if (explicit.isNotEmpty) return [explicit];
     final isGitHubUrl = rawUrl.startsWith('https://github.com/');
     if (!isGitHubUrl) return const [''];
+    final explicit = UpdateConfig.normalizeMirrorPrefix(config.mirrorPrefix);
+    if (explicit.isNotEmpty) {
+      return [
+        explicit,
+        for (final m in _fallbackMirrors)
+          if (m != explicit) m,
+        '',
+      ];
+    }
     return ['', ..._fallbackMirrors];
   }
 

@@ -91,3 +91,11 @@ Flutter binary: `export PATH="$HOME/development/flutter/bin:$PATH"`
   - 数据：`备份与恢复`（全量习惯、打卡记录、提醒与 `AppPrefs` 偏好 JSON 导出/剪贴板复制/本地备份及覆盖恢复）。
 - 扩展 Android 原生通道（`MainActivity.kt` 注册 `com.ibetter.clone.ibetter/native_bridge`，提供 `pickImage` 与 `updateHomeWidget`），保留原有 `UPDATER_CHANNEL` 与轻松日程局域网同步功能。
 - 验证：`flutter analyze` 0 issues；`flutter test --timeout=30s` 125/125 全部通过。
+
+## 轻松打卡 1.4.1
+- 新增原生 `SoundPool` 音效反馈（`SoundEffectsPlayer.kt` + 4 个合成 PCM WAV 音效资源 `res/raw/sfx_{checkin,uncheck,perfect_day,achievement}.wav` + `keep.xml` 防混淆裁剪）：首页打卡/取消打卡、完美一天弹窗、成就解锁弹窗、今日日程勾选以及设置页开启「音效」开关均触发对应清晰音效（受 `AppPrefs.soundEnabled` 控制，采用媒体音量通道，不受系统触控音开关限制）。
+- 升级「我的」个人主页为直接自选图片壁纸体验：
+  - Android `MainActivity.kt` 升级 `pickImage` 优先调用 Android 13+ 系统照片选择器（`MediaStore.ACTION_PICK_IMAGES`）与老版本 `Intent.ACTION_PICK` 相册选择，支持保留 png/webp/jpg 后缀；
+  - `MePage` 顶部封面壁纸与重叠圆形头像支持直接点击调起相册更换，并新增「自选壁纸 / 更换壁纸」胶囊按钮；`EditProfileSheet` 顶部展示壁纸实时预览与选图入口，大尺寸照片加载加设 `cacheWidth` 限制内存占用。
+- 应用内更新默认启用镜像源：`UpdateConfig.defaultMirrorPrefix` 改为 `https://gh-proxy.com/`，预设线路优先展示加速镜像并新增 `mirrorSchemaVersion: 2`（自动迁移旧版空镜像配置为 `gh-proxy.com`，同时保留用户显式选择的「直连 GitHub」）；失败时按所选镜像 → 其他加速镜像 → 直连 GitHub 自动回退，并在更新弹窗展示当前下载线路。
+- 新增 `nowProvider` 消除跨午夜测试时钟抖动（`23:00–03:00` / `04:00–07:00` 隐藏成就受现实时间影响），补充/更新音效、壁纸直选与默认镜像测试；`flutter analyze` 0 issues，`flutter test --timeout=30s` 127/127 全部通过。

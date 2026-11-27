@@ -23,10 +23,16 @@ final databaseProvider = Provider<AppDatabase>((ref) {
   return db;
 });
 
+final nowProvider = Provider<DateTime Function()>((ref) => DateTime.now);
+
 final habitRepositoryProvider =
     Provider<HabitRepository>((ref) => DriftHabitRepository(ref.watch(databaseProvider)));
-final checkInRepositoryProvider =
-    Provider<CheckInRepository>((ref) => DriftCheckInRepository(ref.watch(databaseProvider)));
+final checkInRepositoryProvider = Provider<CheckInRepository>(
+  (ref) => DriftCheckInRepository(
+    ref.watch(databaseProvider),
+    now: ref.watch(nowProvider),
+  ),
+);
 final reminderRepositoryProvider =
     Provider<ReminderRepository>((ref) => DriftReminderRepository(ref.watch(databaseProvider)));
 final agendaRepositoryProvider =

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:ibetter/app/router.dart';
 import 'package:ibetter/app/theme/app_theme.dart';
 import 'package:ibetter/core/db/app_database.dart';
+import 'package:ibetter/core/platform/native_bridge.dart';
 import 'package:ibetter/core/prefs/app_prefs.dart';
 import 'package:ibetter/core/providers.dart';
 import 'package:ibetter/data/backup_service.dart';
@@ -18,6 +19,15 @@ import 'package:ibetter/features/settings/project_sort_page.dart';
 import 'package:ibetter/features/settings/settings_page.dart';
 import 'package:ibetter/features/settings/widget_guide_page.dart';
 import 'package:material_ui/material_ui.dart';
+
+class _SpySoundBridge extends NativeBridge {
+  final List<AppSound> playedSounds = [];
+
+  @override
+  Future<void> playSound(AppSound sound) async {
+    playedSounds.add(sound);
+  }
+}
 
 class _SpyNotificationService extends NoopNotificationService {
   bool? lastReportEnabled;
@@ -52,11 +62,13 @@ void main() {
   late AppDatabase db;
   late MemoryAppPrefsStore prefsStore;
   late _SpyNotificationService spyNotif;
+  late _SpySoundBridge spyBridge;
 
   setUp(() {
     db = AppDatabase(NativeDatabase.memory());
     prefsStore = MemoryAppPrefsStore();
     spyNotif = _SpyNotificationService();
+    spyBridge = _SpySoundBridge();
   });
 
   tearDown(() async => db.close());
@@ -78,6 +90,7 @@ void main() {
         todayProvider.overrideWithValue(fixedToday),
         appPrefsStoreProvider.overrideWithValue(prefsStore),
         notificationServiceProvider.overrideWithValue(spyNotif),
+        nativeBridgeProvider.overrideWithValue(spyBridge),
       ],
       child: MaterialApp.router(
         theme: AppTheme.light(),
@@ -183,9 +196,13 @@ void main() {
     await tester.pumpAndSettle();
     expect((await prefsStore.load()).weekStartsOnMonday, isTrue);
 
-    // Sound toggle off.
+    // Sound toggle off then back on (enabling plays feedback sound).
     await scrollToAndTap(tester, find.byKey(const ValueKey('settings_sound_row')));
     expect((await prefsStore.load()).soundEnabled, isFalse);
+    expect(spyBridge.playedSounds, isEmpty);
+    await scrollToAndTap(tester, find.byKey(const ValueKey('settings_sound_row')));
+    expect((await prefsStore.load()).soundEnabled, isTrue);
+    expect(spyBridge.playedSounds, [AppSound.checkIn]);
 
     // Achievement banner style.
     await scrollToAndTap(tester, find.byKey(const ValueKey('achievement_style_banner')));

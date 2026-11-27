@@ -19,9 +19,11 @@ class MainActivity : FlutterActivity() {
 
     private var pendingImageResult: MethodChannel.Result? = null
     private var pendingImageSlot: String = "avatar"
+    private var soundPlayer: SoundEffectsPlayer? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        soundPlayer = SoundEffectsPlayer(this)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, UPDATER_CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -127,25 +129,57 @@ class MainActivity : FlutterActivity() {
                         }
                         pendingImageResult = result
                         pendingImageSlot = slot.replace(Regex("[^a-zA-Z0-9_-]"), "_")
-                        val intent = android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT).apply {
-                            addCategory(android.content.Intent.CATEGORY_OPENABLE)
-                            type = "image/*"
+
+                        val candidates = buildList {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                add(
+                                    Intent(android.provider.MediaStore.ACTION_PICK_IMAGES).apply {
+                                        type = "image/*"
+                                    },
+                                )
+                            }
+                            add(
+                                Intent(
+                                    Intent.ACTION_PICK,
+                                    android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                                ).apply {
+                                    type = "image/*"
+                                },
+                            )
+                            add(
+                                Intent(Intent.ACTION_GET_CONTENT).apply {
+                                    addCategory(Intent.CATEGORY_OPENABLE)
+                                    type = "image/*"
+                                },
+                            )
+                            add(
+                                Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                                    addCategory(Intent.CATEGORY_OPENABLE)
+                                    type = "image/*"
+                                },
+                            )
                         }
+
+                        var launched = false
                         @Suppress("DEPRECATION")
-                        try {
-                            startActivityForResult(intent, PICK_IMAGE_REQUEST_CODE)
-                        } catch (_: Exception) {
-                            val fallback = android.content.Intent(android.content.Intent.ACTION_GET_CONTENT).apply {
-                                addCategory(android.content.Intent.CATEGORY_OPENABLE)
-                                type = "image/*"
-                            }
+                        for (candidate in candidates) {
                             try {
-                                startActivityForResult(fallback, PICK_IMAGE_REQUEST_CODE)
-                            } catch (e2: Exception) {
-                                pendingImageResult = null
-                                result.error("PICKER_UNAVAILABLE", e2.message, null)
+                                startActivityForResult(candidate, PICK_IMAGE_REQUEST_CODE)
+                                launched = true
+                                break
+                            } catch (_: Exception) {
                             }
                         }
+                        if (!launched) {
+                            pendingImageResult = null
+                            result.error("PICKER_UNAVAILABLE", "No image picker activity found", null)
+                        }
+                    }
+
+                    "playSound" -> {
+                        val type = call.argument<String>("type") ?: "checkin"
+                        soundPlayer?.play(type)
+                        result.success(null)
                     }
 
                     "updateHomeWidget" -> {
@@ -166,6 +200,12 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    override fun onDestroy() {
+        soundPlayer?.release()
+        soundPlayer = null
+        super.onDestroy()
     }
 
     @Suppress("DEPRECATION")
@@ -192,9 +232,15 @@ class MainActivity : FlutterActivity() {
 
     private fun copyPickedImageToFiles(uri: android.net.Uri, slot: String): String? {
         return try {
-            val outDir = java.io.File(filesDir, "profile_media").apply { mkdirs() }
+            val mime = contentResolver.getType(uri)?.lowercase() ?: ""
+            val ext = when {
+                mime.contains("png") -> "png"
+                mime.contains("webp") -> "webp"
+                else -> "jpg"
+            }
+            val outDir = File(filesDir, "profile_media").apply { mkdirs() }
             val stamp = System.currentTimeMillis()
-            val outFile = java.io.File(outDir, "${slot}_$stamp.img")
+            val outFile = File(outDir, "${slot}_$stamp.$ext")
             contentResolver.openInputStream(uri)?.use { input ->
                 java.io.FileOutputStream(outFile).use { output ->
                     input.copyTo(output)

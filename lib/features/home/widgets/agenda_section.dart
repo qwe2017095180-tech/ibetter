@@ -1,9 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../app/theme/app_colors.dart';
+import '../../../core/platform/native_bridge.dart';
+import '../../../core/prefs/app_prefs.dart';
 import '../../../core/providers.dart';
 import '../../../core/widgets/common.dart';
 import '../../../domain/date_key.dart' as dk;
@@ -17,6 +20,15 @@ class AgendaSection extends ConsumerWidget {
   const AgendaSection({super.key});
 
   Future<void> _toggleDone(WidgetRef ref, AgendaItem item) async {
+    final prefs = ref.read(appPrefsProvider).asData?.value ?? const AppPrefs();
+    if (prefs.soundEnabled) {
+      unawaited(
+        ref.read(nativeBridgeProvider).playSound(
+              !item.isDone ? AppSound.checkIn : AppSound.uncheck,
+            ),
+      );
+      unawaited(HapticFeedback.lightImpact());
+    }
     await ref.read(agendaRepositoryProvider).setDone(item.id, !item.isDone);
     final config = ref.read(qingsongConfigProvider).asData?.value;
     if (item.isLinked && config != null && config.isConfigured) {

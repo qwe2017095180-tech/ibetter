@@ -191,6 +191,12 @@ class _UpdateDialogState extends ConsumerState<_UpdateDialog> {
               '${release.assetSizeBytes > 0 ? ' · 安装包 ${_formatBytes(release.assetSizeBytes)}' : ''}',
               style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
+            const SizedBox(height: 4),
+            Text(
+              '下载线路：${currentMirror.isEmpty ? '直连 GitHub' : (Uri.tryParse(currentMirror)?.host ?? currentMirror)}',
+              key: const ValueKey('update_current_mirror_label'),
+              style: const TextStyle(fontSize: 12, color: AppColors.primary),
+            ),
             const SizedBox(height: 12),
             Container(
               width: double.infinity,

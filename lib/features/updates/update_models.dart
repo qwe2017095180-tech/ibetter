@@ -172,21 +172,24 @@ class UpdateConfig {
     'UPDATE_REPO',
     defaultValue: 'qwe2017095180-tech/ibetter',
   );
-  static const String defaultMirrorPrefix =
-      String.fromEnvironment('UPDATE_MIRROR', defaultValue: '');
+  static const String defaultMirrorPrefix = String.fromEnvironment(
+    'UPDATE_MIRROR',
+    defaultValue: 'https://gh-proxy.com/',
+  );
 
   /// Common mirror presets for quick one-tap switching on mobile.
   static const List<UpdateMirrorPreset> mirrorPresets = [
-    UpdateMirrorPreset(label: '直连 GitHub', prefix: ''),
     UpdateMirrorPreset(label: 'gh-proxy.com', prefix: 'https://gh-proxy.com/'),
     UpdateMirrorPreset(label: 'ghfast.top', prefix: 'https://ghfast.top/'),
     UpdateMirrorPreset(label: 'gh-proxy.org', prefix: 'https://gh-proxy.org/'),
+    UpdateMirrorPreset(label: '直连 GitHub', prefix: ''),
   ];
 
-  /// Automatic fallback mirrors tried when direct GitHub download fails.
+  /// Automatic fallback mirrors tried when primary source fails.
   static const List<String> fallbackMirrorPrefixes = [
     'https://gh-proxy.com/',
     'https://ghfast.top/',
+    'https://gh-proxy.org/',
   ];
 
   /// GitHub repository in `owner/repo` format.
@@ -242,20 +245,38 @@ class UpdateConfig {
         ignoredTag: clearIgnoredTag ? null : (ignoredTag ?? this.ignoredTag),
       );
 
+  static const int _currentMirrorSchemaVersion = 2;
+
   Map<String, dynamic> toJson() => {
         'repo': repo,
         'mirrorPrefix': mirrorPrefix,
+        'mirrorSchemaVersion': _currentMirrorSchemaVersion,
         'autoCheck': autoCheck,
         'ignoredTag': ignoredTag,
       };
 
   factory UpdateConfig.fromJson(Map<String, dynamic> json) {
     final savedRepo = (json['repo'] as String?)?.trim();
-    final savedMirror = (json['mirrorPrefix'] as String?)?.trim();
+    final rawMirror = json['mirrorPrefix'];
+    final savedMirror = rawMirror is String ? rawMirror.trim() : null;
+    final schemaVersion = (json['mirrorSchemaVersion'] as num?)?.toInt() ?? 1;
+
+    final String resolvedMirror;
+    if (schemaVersion < _currentMirrorSchemaVersion) {
+      // Legacy configs left mirrorPrefix empty; migrate to default mirror once.
+      resolvedMirror = (savedMirror != null && savedMirror.isNotEmpty)
+          ? savedMirror
+          : defaultMirrorPrefix;
+    } else if (savedMirror != null) {
+      // Preserve explicit user choice (including '' for direct GitHub).
+      resolvedMirror = savedMirror;
+    } else {
+      resolvedMirror = defaultMirrorPrefix;
+    }
+
     return UpdateConfig(
       repo: (savedRepo != null && savedRepo.isNotEmpty) ? savedRepo : defaultRepo,
-      mirrorPrefix:
-          (savedMirror != null && savedMirror.isNotEmpty) ? savedMirror : defaultMirrorPrefix,
+      mirrorPrefix: resolvedMirror,
       autoCheck: json['autoCheck'] as bool? ?? true,
       ignoredTag: json['ignoredTag'] as String?,
     );

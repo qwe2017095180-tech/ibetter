@@ -134,8 +134,13 @@ class DriftHabitRepository implements HabitRepository {
 // ---------------------------------------------------------------- check-ins
 
 class DriftCheckInRepository implements CheckInRepository {
-  DriftCheckInRepository(this._db);
+  DriftCheckInRepository(this._db, {DateTime Function()? now})
+      : _clock = now ?? DateTime.now;
+
   final AppDatabase _db;
+  final DateTime Function() _clock;
+
+  int _nowMs() => _clock().millisecondsSinceEpoch;
 
   Stream<List<CheckIn>> _watch(Expression<bool> Function($CheckInsTable t) filter) =>
       (_db.select(_db.checkIns)
@@ -174,7 +179,7 @@ class DriftCheckInRepository implements CheckInRepository {
             checkIns.mood.isNotNull() |
             checkIns.note.isNotNull();
         await (_db.update(checkIns)..where((_) => day & hasDetail)).write(
-          CheckInsCompanion(doneCount: const Value(0), updatedAt: Value(_now())),
+          CheckInsCompanion(doneCount: const Value(0), updatedAt: Value(_nowMs())),
         );
         await (_db.delete(checkIns)..where((_) => day & hasDetail.not())).go();
       });
@@ -185,10 +190,10 @@ class DriftCheckInRepository implements CheckInRepository {
             habitId: habitId,
             date: date,
             doneCount: Value(count),
-            updatedAt: _now(),
+            updatedAt: _nowMs(),
           ),
           onConflict: DoUpdate(
-            (old) => CheckInsCompanion(doneCount: Value(count), updatedAt: Value(_now())),
+            (old) => CheckInsCompanion(doneCount: Value(count), updatedAt: Value(_nowMs())),
             target: [_db.checkIns.habitId, _db.checkIns.date],
           ),
         );
@@ -204,14 +209,14 @@ class DriftCheckInRepository implements CheckInRepository {
             score: Value(score),
             mood: Value(mood),
             note: Value(note),
-            updatedAt: _now(),
+            updatedAt: _nowMs(),
           ),
           onConflict: DoUpdate(
             (old) => CheckInsCompanion(
               score: Value(score),
               mood: Value(mood),
               note: Value(note),
-              updatedAt: Value(_now()),
+              updatedAt: Value(_nowMs()),
             ),
             target: [_db.checkIns.habitId, _db.checkIns.date],
           ),

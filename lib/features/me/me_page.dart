@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../app/router.dart';
 import '../../app/theme/app_colors.dart';
+import '../../core/platform/native_bridge.dart';
 import '../../core/prefs/app_prefs.dart';
 import '../../core/providers.dart';
 import '../../core/widgets/common.dart';
@@ -68,6 +69,40 @@ class MePage extends ConsumerWidget {
     );
   }
 
+  Future<void> _pickWallpaper(BuildContext context, WidgetRef ref) async {
+    final bridge = ref.read(nativeBridgeProvider);
+    if (!bridge.supportsGalleryPicker) {
+      await showEditProfileSheet(context, ref);
+      return;
+    }
+    final path = await bridge.pickImage('cover');
+    if (!context.mounted) return;
+    if (path != null && path.isNotEmpty) {
+      await ref.read(appPrefsProvider.notifier).updateProfile(coverImagePath: path);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text('已更换背景壁纸')));
+    }
+  }
+
+  Future<void> _pickAvatar(BuildContext context, WidgetRef ref) async {
+    final bridge = ref.read(nativeBridgeProvider);
+    if (!bridge.supportsGalleryPicker) {
+      await showEditProfileSheet(context, ref);
+      return;
+    }
+    final path = await bridge.pickImage('avatar');
+    if (!context.mounted) return;
+    if (path != null && path.isNotEmpty) {
+      await ref.read(appPrefsProvider.notifier).updateProfile(avatarImagePath: path);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text('已更新头像')));
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(appPrefsProvider).asData?.value ?? const AppPrefs();
@@ -76,7 +111,7 @@ class MePage extends ConsumerWidget {
         .where((m) => !prefs.readInboxIds.contains(m.id))
         .length;
 
-    const coverHeight = 168.0;
+    const coverHeight = 184.0;
     const avatarSize = 112.0;
 
     return Scaffold(
@@ -89,17 +124,60 @@ class MePage extends ConsumerWidget {
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                ProfileCoverBanner(
-                  presetId: prefs.coverPreset,
-                  imagePath: prefs.coverImagePath,
-                  height: coverHeight,
+                GestureDetector(
+                  key: const ValueKey('me_cover_tap'),
+                  onTap: () => _pickWallpaper(context, ref),
+                  child: ProfileCoverBanner(
+                    presetId: prefs.coverPreset,
+                    imagePath: prefs.coverImagePath,
+                    height: coverHeight,
+                  ),
+                ),
+                Positioned(
+                  right: 12,
+                  top: coverHeight - 40,
+                  child: Material(
+                    color: const Color(0x78000000),
+                    borderRadius: BorderRadius.circular(16),
+                    child: InkWell(
+                      key: const ValueKey('me_change_cover_button'),
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => _pickWallpaper(context, ref),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.photo_library_outlined,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              prefs.coverImagePath == null ? '自选壁纸' : '更换壁纸',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
                 Positioned(
                   left: 0,
                   right: 0,
                   top: coverHeight - avatarSize / 2,
                   child: Center(
-                    child: ProfileAvatar(prefs: prefs, size: avatarSize),
+                    child: GestureDetector(
+                      key: const ValueKey('me_avatar_tap'),
+                      onTap: () => _pickAvatar(context, ref),
+                      child: ProfileAvatar(prefs: prefs, size: avatarSize),
+                    ),
                   ),
                 ),
               ],

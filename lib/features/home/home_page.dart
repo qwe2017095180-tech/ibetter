@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/services.dart' show HapticFeedback, SystemSound, SystemSoundType;
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -177,8 +177,14 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (nextCount == currentCount) return;
 
     final prefs = ref.read(appPrefsProvider).asData?.value ?? const AppPrefs();
-    if (prefs.soundEnabled) {
-      unawaited(SystemSound.play(SystemSoundType.click));
+    final bridge = ref.read(nativeBridgeProvider);
+    final soundEnabled = prefs.soundEnabled;
+    if (soundEnabled) {
+      unawaited(
+        bridge.playSound(
+          nextCount > currentCount ? AppSound.checkIn : AppSound.uncheck,
+        ),
+      );
       unawaited(HapticFeedback.lightImpact());
     }
 
@@ -208,7 +214,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       habitId: habit.id,
       dateKey: key,
       count: nextCount,
-      updatedAt: DateTime.now(),
+      updatedAt: ref.read(nowProvider)(),
     );
 
     final statsService = ref.read(statsServiceProvider);
@@ -220,6 +226,9 @@ class _HomePageState extends ConsumerState<HomePage> {
         statsService.dayCompletion(habits, dayAfter, selectedDate) == true;
 
     if (!wasAllDone && isAllDone) {
+      if (soundEnabled) {
+        unawaited(bridge.playSound(AppSound.perfectDay));
+      }
       final scheduledHabits = habits
           .where(
             (h) => h.isActive && scheduleService.isScheduledOn(h, selectedDate),
@@ -274,6 +283,9 @@ class _HomePageState extends ConsumerState<HomePage> {
           today: today,
         );
     if (newlyUnlocked.isNotEmpty) {
+      if (soundEnabled) {
+        unawaited(bridge.playSound(AppSound.achievement));
+      }
       if (prefs.achievementDisplayStyle == CelebrationStyle.banner) {
         final first = newlyUnlocked.first;
         await showCelebrationBanner(
@@ -309,6 +321,11 @@ class _HomePageState extends ConsumerState<HomePage> {
       return;
     }
     if (habit.dailyTarget <= 1 || currentCount <= 0) return;
+    final prefs = ref.read(appPrefsProvider).asData?.value ?? const AppPrefs();
+    if (prefs.soundEnabled) {
+      unawaited(ref.read(nativeBridgeProvider).playSound(AppSound.uncheck));
+      unawaited(HapticFeedback.lightImpact());
+    }
     await ref
         .read(checkInRepositoryProvider)
         .setCount(habit.id, dk.dateKey(selectedDate), currentCount - 1);

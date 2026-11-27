@@ -129,10 +129,29 @@ void main() {
       expect(info.changelog, '- 新增应用内更新');
     });
 
-    test('UpdateConfig validates repo and applies mirror prefix', () {
+    test('UpdateConfig defaults to mirror, migrates legacy empty config, and preserves explicit direct', () {
       expect(UpdateConfig.isValidRepo('alice/ibetter'), isTrue);
       expect(UpdateConfig.isValidRepo('invalid'), isFalse);
       expect(UpdateConfig.isValidRepo('alice/i better'), isFalse);
+
+      // Fresh installs default to gh-proxy.com mirror.
+      const fresh = UpdateConfig();
+      expect(fresh.mirrorPrefix, 'https://gh-proxy.com/');
+      expect(
+        fresh.resolveDownloadUrl('https://github.com/alice/ibetter/releases/download/v1.0.1/app.apk'),
+        'https://gh-proxy.com/https://github.com/alice/ibetter/releases/download/v1.0.1/app.apk',
+      );
+
+      // Legacy v1 configs without mirrorSchemaVersion migrate empty -> default mirror.
+      final migrated = UpdateConfig.fromJson(const {
+        'repo': 'alice/ibetter',
+        'mirrorPrefix': '',
+      });
+      expect(migrated.mirrorPrefix, 'https://gh-proxy.com/');
+
+      // v2 configs preserve explicit choice to use direct GitHub ('').
+      final explicitDirect = const UpdateConfig(repo: 'alice/ibetter', mirrorPrefix: '').toJson();
+      expect(UpdateConfig.fromJson(explicitDirect).mirrorPrefix, '');
 
       const cfg = UpdateConfig(repo: 'alice/ibetter', mirrorPrefix: 'https://gh-proxy.com');
       expect(
@@ -404,7 +423,7 @@ void main() {
     }, _PassthroughHttpOverrides());
   });
 
-  testWidgets('UpdateDialog shows sanitized error, mirror switch, and browser download fallback',
+  testWidgets('UpdateDialog defaults to mirror, shows sanitized error, switches mirror, and falls back to browser',
       (tester) async {
     final tmpDir = Directory.systemTemp.createTempSync('ibetter_err_dialog_');
     addTearDown(() => tmpDir.deleteSync(recursive: true));
@@ -432,7 +451,7 @@ void main() {
       ),
       downloadHandler: (rel, cfg, onProgress) async {
         seenMirrors.add(cfg.mirrorPrefix);
-        if (cfg.mirrorPrefix.isEmpty) {
+        if (cfg.mirrorPrefix == 'https://gh-proxy.com/') {
           throw HttpException(
             'Connection closed while receiving data',
             uri: Uri.parse('https://release-assets.githubusercontent.com/secret?jwt=verysecret'),
@@ -456,8 +475,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    // MorePage displays default mirror prefix instead of direct GitHub.
+    expect(find.text('https://gh-proxy.com/'), findsOneWidget);
+
     await tester.tap(find.byKey(const ValueKey('more_check_update_row')));
     await tester.pumpAndSettle();
+    expect(find.text('下载线路：gh-proxy.com'), findsOneWidget);
+
     await tester.tap(find.text('立即更新'));
     await tester.pumpAndSettle();
 
@@ -466,15 +490,15 @@ void main() {
     expect(find.textContaining('下载连接中途断开'), findsOneWidget);
     expect(find.textContaining('verysecret'), findsNothing);
 
-    // Browser download button works.
+    // Browser download button uses configured mirror URL.
     await tester.tap(find.byKey(const ValueKey('update_browser_download_btn')));
     await tester.pumpAndSettle();
-    expect(platform.openedUrls, [release.apkUrl]);
+    expect(platform.openedUrls, ['https://gh-proxy.com/${release.apkUrl}']);
 
-    // Tapping a mirror chip saves it and retries successfully.
-    await tester.tap(find.text('gh-proxy.com'));
+    // Tapping a different mirror chip saves it and retries successfully.
+    await tester.tap(find.text('ghfast.top'));
     await tester.pumpAndSettle();
-    expect(seenMirrors, ['', 'https://gh-proxy.com/']);
+    expect(seenMirrors, ['https://gh-proxy.com/', 'https://ghfast.top/']);
     expect(find.text('重新拉起安装'), findsOneWidget);
   });
 }

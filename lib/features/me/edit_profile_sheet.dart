@@ -98,6 +98,7 @@ class ProfileCoverBanner extends StatelessWidget {
           ? Image.file(
               file,
               fit: BoxFit.cover,
+              cacheWidth: 1200,
               errorBuilder: (_, _, _) => _PresetCoverArtwork(preset: preset),
             )
           : _PresetCoverArtwork(preset: preset),
@@ -210,6 +211,7 @@ class ProfileAvatar extends StatelessWidget {
                 width: size,
                 height: size,
                 fit: BoxFit.cover,
+                cacheWidth: 400,
                 errorBuilder: (_, _, _) => Center(
                   child: HabitIcon(prefs.avatarPreset, size: size * 0.62),
                 ),
@@ -353,6 +355,37 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
               ],
             ),
             const SizedBox(height: 12),
+            Row(
+              children: [
+                const Text('背景壁纸', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                const Spacer(),
+                if (_coverImagePath != null && !_clearCover)
+                  TextButton(
+                    onPressed: () => setState(() {
+                      _coverImagePath = null;
+                      _clearCover = true;
+                    }),
+                    child: const Text('恢复默认'),
+                  ),
+                TextButton.icon(
+                  onPressed: () => _pickPhoto('cover'),
+                  icon: const Icon(Icons.photo_library_outlined, size: 18),
+                  label: const Text('从相册选壁纸'),
+                ),
+              ],
+            ),
+            GestureDetector(
+              onTap: () => _pickPhoto('cover'),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: ProfileCoverBanner(
+                  presetId: _coverPreset,
+                  imagePath: _clearCover ? null : _coverImagePath,
+                  height: 92,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
             TextField(
               key: const ValueKey('profile_nickname_input'),
               controller: _nickCtrl,
@@ -438,7 +471,7 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
             const SizedBox(height: 14),
             Row(
               children: [
-                const Text('背景封面', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                const Text('预设壁纸配色', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                 const Spacer(),
                 if (_coverImagePath != null && !_clearCover)
                   TextButton(

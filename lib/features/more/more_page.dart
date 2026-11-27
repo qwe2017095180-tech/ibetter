@@ -82,11 +82,11 @@ class _MorePageState extends ConsumerState<MorePage> {
 
   Future<void> _editMirrorDialog(String initialMirror) async {
     final saved = await _showTextPromptDialog(
-      title: '下载加速前缀（可选）',
-      description: '留空则直连 GitHub（失败会自动尝试镜像）；也可直接点选下方常用加速前缀或手动填写。',
+      title: '下载加速前缀（默认开启镜像）',
+      description: '默认已使用 gh-proxy.com 镜像源并支持自动切换/回退；也可点选下方常用线路或清空恢复直连 GitHub。',
       initialValue: initialMirror,
-      hintText: '留空表示直连',
-      clearLabel: '恢复直连',
+      hintText: '例如：https://gh-proxy.com/（留空为直连）',
+      clearLabel: '切换为直连',
       presets: [
         for (final preset in UpdateConfig.mirrorPresets)
           (label: preset.label, value: preset.prefix),
