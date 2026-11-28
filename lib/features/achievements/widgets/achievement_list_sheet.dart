@@ -19,7 +19,7 @@ Future<void> showAchievementsSheet(
   );
 }
 
-class _AchievementListSheet extends StatelessWidget {
+class _AchievementListSheet extends StatefulWidget {
   const _AchievementListSheet({
     required this.stats,
     required this.today,
@@ -29,9 +29,24 @@ class _AchievementListSheet extends StatelessWidget {
   final DateTime today;
 
   @override
+  State<_AchievementListSheet> createState() => _AchievementListSheetState();
+}
+
+enum _ListSheetFilter { all, unlocked, locked }
+
+class _AchievementListSheetState extends State<_AchievementListSheet> {
+  _ListSheetFilter _filter = _ListSheetFilter.all;
+
+  @override
   Widget build(BuildContext context) {
-    final items = stats.achievements;
+    final items = widget.stats.achievements;
     final unlockedCount = items.where((a) => a.unlocked).length;
+    final lockedCount = items.length - unlockedCount;
+    final filtered = switch (_filter) {
+      _ListSheetFilter.all => items,
+      _ListSheetFilter.unlocked => [for (final a in items) if (a.unlocked) a],
+      _ListSheetFilter.locked => [for (final a in items) if (!a.unlocked) a],
+    };
 
     return DraggableScrollableSheet(
       initialChildSize: 0.72,
@@ -78,17 +93,67 @@ class _AchievementListSheet extends StatelessWidget {
                     ],
                   ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final (f, label) in [
+                          (_ListSheetFilter.all, '全部 (${items.length})'),
+                          (_ListSheetFilter.unlocked, '已解锁 ($unlockedCount)'),
+                          (_ListSheetFilter.locked, '未解锁 ($lockedCount)'),
+                        ]) ...[
+                          if (f != _ListSheetFilter.all) const SizedBox(width: 8),
+                          InkWell(
+                            borderRadius: BorderRadius.circular(AppRadius.pill),
+                            onTap: () => setState(() => _filter = f),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _filter == f
+                                    ? AppColors.primary.withValues(alpha: 0.14)
+                                    : const Color(0xFFF3F4F6),
+                                borderRadius: BorderRadius.circular(AppRadius.pill),
+                                border: Border.all(
+                                  color: _filter == f
+                                      ? AppColors.primary
+                                      : const Color(0xFFE5E7EB),
+                                ),
+                              ),
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: _filter == f
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                  color: _filter == f
+                                      ? AppColors.primary
+                                      : AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
                 const Divider(height: 1, thickness: 1, color: AppColors.divider),
                 Expanded(
                   child: ListView.separated(
                     controller: scrollController,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    itemCount: items.length,
+                    itemCount: filtered.length,
                     separatorBuilder: (_, _) =>
                         const Divider(height: 1, thickness: 0.8, color: AppColors.divider),
                     itemBuilder: (_, index) => _AchievementRow(
-                      item: items[index],
-                      today: today,
+                      item: filtered[index],
+                      today: widget.today,
                     ),
                   ),
                 ),
@@ -113,6 +178,7 @@ class _AchievementRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateLabel = item.unlocked ? formatAchievementDate(item.latestDate, today) : '';
+    final lore = item.displayLore;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -141,6 +207,19 @@ class _AchievementRow extends StatelessWidget {
                     color: AppColors.textSecondary,
                   ),
                 ),
+                if (lore != null && lore.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    lore,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      height: 1.35,
+                      color: Color(0xFF666666),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

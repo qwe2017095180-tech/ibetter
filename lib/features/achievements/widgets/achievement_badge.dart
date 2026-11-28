@@ -352,16 +352,64 @@ class _SingleDayPalette {
   final Color ribbon;
   final Color ribbonFold;
 
+  static const _goldPalette = _SingleDayPalette(
+    fillTop: Color(0xFFFFF6DB),
+    fillBottom: Color(0xFFFFE18D),
+    border: Color(0xFFF59F00),
+    ribbon: Color(0xFFF59F00),
+    ribbonFold: Color(0xFFC97B00),
+  );
+
+  static const _legendDays = {30, 50, 180, 200, 300, 325, 360, 365};
+  static const _cultJewelDays = {42, 64, 81, 86, 108, 127, 151, 233, 256, 314, 318};
+
+  static const _cyclePalettes = <_SingleDayPalette>[
+    _SingleDayPalette(
+      fillTop: Color(0xFFFFF3DC),
+      fillBottom: Color(0xFFFFE0AF),
+      border: Color(0xFFFFA940),
+      ribbon: Color(0xFFFFA940),
+      ribbonFold: Color(0xFFD97B12),
+    ),
+    _SingleDayPalette(
+      fillTop: Color(0xFFE7FAEC),
+      fillBottom: Color(0xFFC4F0CF),
+      border: Color(0xFF49C66D),
+      ribbon: Color(0xFF49C66D),
+      ribbonFold: Color(0xFF2D9C4D),
+    ),
+    _SingleDayPalette(
+      fillTop: Color(0xFFE8F0FF),
+      fillBottom: Color(0xFFC9DBFF),
+      border: Color(0xFF4B89FF),
+      ribbon: Color(0xFF4B89FF),
+      ribbonFold: Color(0xFF2B62CC),
+    ),
+    _SingleDayPalette(
+      fillTop: Color(0xFFF2EBFF),
+      fillBottom: Color(0xFFDCCBFF),
+      border: Color(0xFF8E63F5),
+      ribbon: Color(0xFF8E63F5),
+      ribbonFold: Color(0xFF683ED1),
+    ),
+    _SingleDayPalette(
+      fillTop: Color(0xFFFFEBEE),
+      fillBottom: Color(0xFFFFCDD2),
+      border: Color(0xFFFF5E6C),
+      ribbon: Color(0xFFFF5E6C),
+      ribbonFold: Color(0xFFD63B49),
+    ),
+    _SingleDayPalette(
+      fillTop: Color(0xFFE0F7F5),
+      fillBottom: Color(0xFFB5ECE8),
+      border: Color(0xFF26B5AC),
+      ribbon: Color(0xFF26B5AC),
+      ribbonFold: Color(0xFF178A83),
+    ),
+  ];
+
   static _SingleDayPalette forDays(int days) {
-    if (days == 1) {
-      return const _SingleDayPalette(
-        fillTop: Color(0xFFFFF3DC),
-        fillBottom: Color(0xFFFFE0AF),
-        border: Color(0xFFFFA940),
-        ribbon: Color(0xFFFFA940),
-        ribbonFold: Color(0xFFD97B12),
-      );
-    }
+    if (days == 1) return _cyclePalettes[0];
     if (days == 2) {
       return const _SingleDayPalette(
         fillTop: Color(0xFFE3F7F5),
@@ -371,59 +419,38 @@ class _SingleDayPalette {
         ribbonFold: Color(0xFFD98E1F),
       );
     }
-    if (days == 3) {
-      return const _SingleDayPalette(
-        fillTop: Color(0xFFE7FAEC),
-        fillBottom: Color(0xFFC4F0CF),
-        border: Color(0xFF49C66D),
-        ribbon: Color(0xFF49C66D),
-        ribbonFold: Color(0xFF2D9C4D),
-      );
+    if (days == 3) return _cyclePalettes[1];
+    if (days == 5) return _cyclePalettes[2];
+    if (days == 7 || days == 21) return _cyclePalettes[3];
+    if (days == 10 || days == 100) return _cyclePalettes[4];
+    if (days == 15) return _cyclePalettes[5];
+    if (_legendDays.contains(days)) return _goldPalette;
+    if (_cultJewelDays.contains(days)) {
+      return switch (days % 3) {
+        0 => const _SingleDayPalette(
+            fillTop: Color(0xFFF3E8FF),
+            fillBottom: Color(0xFFD8B4FE),
+            border: Color(0xFF7C3AED),
+            ribbon: Color(0xFF7C3AED),
+            ribbonFold: Color(0xFF5B21B6),
+          ),
+        1 => const _SingleDayPalette(
+            fillTop: Color(0xFFFFE4E6),
+            fillBottom: Color(0xFFFECDD3),
+            border: Color(0xFFE11D48),
+            ribbon: Color(0xFFE11D48),
+            ribbonFold: Color(0xFF9F1239),
+          ),
+        _ => const _SingleDayPalette(
+            fillTop: Color(0xFFCCFBF1),
+            fillBottom: Color(0xFF99F6E4),
+            border: Color(0xFF0D9488),
+            ribbon: Color(0xFF0D9488),
+            ribbonFold: Color(0xFF115E59),
+          ),
+      };
     }
-    if (days == 5) {
-      return const _SingleDayPalette(
-        fillTop: Color(0xFFE8F0FF),
-        fillBottom: Color(0xFFC9DBFF),
-        border: Color(0xFF4B89FF),
-        ribbon: Color(0xFF4B89FF),
-        ribbonFold: Color(0xFF2B62CC),
-      );
-    }
-    if (days == 7 || days == 21) {
-      return const _SingleDayPalette(
-        fillTop: Color(0xFFF2EBFF),
-        fillBottom: Color(0xFFDCCBFF),
-        border: Color(0xFF8E63F5),
-        ribbon: Color(0xFF8E63F5),
-        ribbonFold: Color(0xFF683ED1),
-      );
-    }
-    if (days == 10 || days == 100) {
-      return const _SingleDayPalette(
-        fillTop: Color(0xFFFFEBEE),
-        fillBottom: Color(0xFFFFCDD2),
-        border: Color(0xFFFF5E6C),
-        ribbon: Color(0xFFFF5E6C),
-        ribbonFold: Color(0xFFD63B49),
-      );
-    }
-    if (days == 15) {
-      return const _SingleDayPalette(
-        fillTop: Color(0xFFE0F7F5),
-        fillBottom: Color(0xFFB5ECE8),
-        border: Color(0xFF26B5AC),
-        ribbon: Color(0xFF26B5AC),
-        ribbonFold: Color(0xFF178A83),
-      );
-    }
-    // 30, 50, 365+ royal gold
-    return const _SingleDayPalette(
-      fillTop: Color(0xFFFFF6DB),
-      fillBottom: Color(0xFFFFE18D),
-      border: Color(0xFFF59F00),
-      ribbon: Color(0xFFF59F00),
-      ribbonFold: Color(0xFFC97B00),
-    );
+    return _cyclePalettes[days % _cyclePalettes.length];
   }
 }
 

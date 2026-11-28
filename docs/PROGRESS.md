@@ -109,3 +109,13 @@ Flutter binary: `export PATH="$HOME/development/flutter/bin:$PATH"`
 - 离线缓存与双向联动：`FileQingsongNoticeCacheStore` 持久化电脑端拉取的通知列表，通过 `mergeBoardItems` 与本地日程流（`DriftAgendaRepository.watchAllVisible()`）去重融合；`QingsongClient.setNoticeStatus` 将「待办 / 完成」状态实时推回电脑端 `/bridge/v1/notices/status`，对电脑端暂不支持的非待办/完成状态（HTTP 400）自动优雅降级保留在手机端。
 - 新增双入口与路由（`Routes.qingsongBoard` = `/qingsong-board`）：首页「今日日程」右上角「全部日程 ›」（`home_all_agenda_button`）直达；「更多 → 轻松日程同步」顶部新增「查看全部日程」（`more_qingsong_board_row`）。
 - 验证：`flutter analyze` 0 issues；`flutter test --timeout=30s` 134/134 全部通过。
+
+## 轻松打卡 1.6.0
+- 单项目成就系统大幅扩容至 **274 项**（`lib/domain/services/single_project_milestones.dart`、`lib/domain/services/achievement_service.dart`）：
+  - 覆盖 1–365 天，第 1–100 天与最后 10 天（355–365 天）每日必得，101–354 天任意两项最多间隔 1 天，完整保留原有 12 项成就 ID 与名称兼容性；
+  - 融合传统典故与成语（如 `不二法门`、`三生万物`、`三十六计`、`四十不惑`、`九九八十一难`、`诗经三百零五`）、数学与科技/极客趣味梗（如 `宇宙终极答案 42`、`127 本地回环`、`200 OK`、`256G 旗舰版`、`RGB 满值 255`、`圆周率 314`）、以及互联网/ACGN 与游戏热梗（如 `22娘/2233`、`4399`、`64 一组方块`、`秋名山 AE86`、`抽卡小/大保底 90/180`、`23333 大笑`、`300 吃井线`、`仙术杯 325`、`360° 满圆` 等）。
+- 升级成就模型、徽章与弹窗展示：
+  - `AchievementItem` 新增 `lore` / `displayLore` 典故热梗文案；橙色解锁弹窗（`AchievementUnlockDialog`）新增半透明梗解卡片展示；`AchievementBadge` 扩展 6 套周期活力缎带配色与传奇金/宝石紫/绯红/碧青纪念徽章配色。
+- 新增可搜索、按阶段筛选的「单项目成就图鉴」（`lib/features/achievements/widgets/single_project_catalog_sheet.dart`）：
+  - `AchievementsPage`「单项目成就」区块展示精选 6 项预览（最近 3 项已解锁 + 接下来 3 项待冲刺目标），顶部显示 `已解锁/274`，底部入口一键打开完整图鉴；图鉴支持搜索天数/标题/梗解并按 `全部 / 已解锁 / 1-30天 / 31-100天 / 101-200天 / 201-300天 / 301-365天` 筛选；`AchievementListSheet`（「我的记录 → 全部成就」）亦支持全部/已解锁/未解锁筛选与梗解展示。
+- 验证：`flutter analyze` 0 issues；`flutter test --timeout=30s` 137/137 全部通过。

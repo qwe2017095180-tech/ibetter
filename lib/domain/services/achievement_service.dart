@@ -2,8 +2,11 @@ import '../date_key.dart';
 import '../models/check_in.dart';
 import '../models/habit.dart';
 import 'schedule_service.dart';
+import 'single_project_milestones.dart';
 import 'stats_service.dart';
 import 'streak_service.dart';
+
+export 'single_project_milestones.dart';
 
 /// Category tabs / sections on "我的成就".
 enum AchievementCategory {
@@ -46,6 +49,7 @@ class AchievementItem {
     required this.iconKey,
     required this.count,
     this.latestDate,
+    this.lore,
     this.category = AchievementCategory.task,
     this.badgeStyle = AchievementBadgeStyle.trophy,
     this.milestoneDays,
@@ -65,6 +69,9 @@ class AchievementItem {
   /// Latest date (`yyyy-MM-dd`) this achievement was earned, if known.
   final String? latestDate;
 
+  /// Optional allusion/meme backstory shown on cards, unlock popups, and the catalog.
+  final String? lore;
+
   final AchievementCategory category;
   final AchievementBadgeStyle badgeStyle;
 
@@ -82,6 +89,7 @@ class AchievementItem {
 
   String get displayTitle => (isHidden && !unlocked) ? '隐藏成就' : title;
   String get displaySubtitle => (isHidden && !unlocked) ? '达到特定条件解锁' : subtitle;
+  String? get displayLore => (isHidden && !unlocked) ? null : lore;
 }
 
 /// Aggregated summary powering "我的成就" & "成绩单".
@@ -133,21 +141,6 @@ class AchievementService {
   final ScheduleService _schedule;
   final StreakService _streak;
   final StatsService _stats;
-
-  static const _singleMilestones = <(int days, String id, String title, String icon)>[
-    (1, 'single_1', '一日幸运', 'achievement/sparkles'),
-    (2, 'single_2', '不二法门', 'achievement/light_bulb'),
-    (3, 'single_3', '三生万物', 'achievement/star'),
-    (5, 'single_5', '五福临门', 'achievement/glowing_star'),
-    (7, 'single_7', '七星高照', 'achievement/fire'),
-    (10, 'single_10', '十全十美', 'achievement/hundred_points'),
-    (15, 'single_15', '半月之约', 'achievement/sports_medal'),
-    (21, 'single_21', '廿一成习', 'achievement/1st_place_medal'),
-    (30, 'single_30', '满月达成', 'achievement/trophy'),
-    (50, 'single_50', '五十知天命', 'achievement/gem_stone'),
-    (100, 'single_100', '百炼成钢', 'achievement/crown'),
-    (365, 'single_365', '一周年纪念', 'achievement/castle'),
-  ];
 
   static const _streakMilestones =
       <(int days, String id, String title, String icon, bool hidden)>[
@@ -368,6 +361,7 @@ class AchievementService {
           iconKey: a.iconKey,
           count: a.count,
           latestDate: dateStr,
+          lore: a.lore,
           category: a.category,
           badgeStyle: a.badgeStyle,
           milestoneDays: a.milestoneDays,
@@ -453,15 +447,15 @@ class AchievementService {
 
     // 1. 单项目成就 (singleProject)
     final singleItems = <AchievementItem>[];
-    for (final (days, id, title, icon) in _singleMilestones) {
+    for (final m in kSingleProjectMilestones) {
       var hits = 0;
       String? latest;
       Habit? latestHabit;
       for (final h in habits) {
         final dates = sortedByHabit[h.id] ?? const <String>[];
-        if (dates.length >= days) {
+        if (dates.length >= m.days) {
           hits++;
-          final reachedOn = dates[days - 1];
+          final reachedOn = dates[m.days - 1];
           if (latest == null || reachedOn.compareTo(latest) >= 0) {
             latest = reachedOn;
             latestHabit = h;
@@ -469,15 +463,16 @@ class AchievementService {
         }
       }
       singleItems.add(AchievementItem(
-        id: id,
-        title: title,
-        subtitle: '单项目坚持$days天',
-        iconKey: icon,
+        id: m.id,
+        title: m.title,
+        subtitle: '单项目坚持${m.days}天',
+        lore: m.lore,
+        iconKey: m.iconKey,
         count: hits,
         latestDate: latest,
         category: AchievementCategory.singleProject,
         badgeStyle: AchievementBadgeStyle.singleDayRibbon,
-        milestoneDays: days,
+        milestoneDays: m.days,
         habitName: latestHabit?.name,
         habitIconKey: latestHabit?.iconKey,
       ));

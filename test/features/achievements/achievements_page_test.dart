@@ -344,7 +344,7 @@ void main() {
         expect(find.descendant(of: highestSection, matching: find.text('三生万物')), findsOneWidget);
         expect(find.descendant(of: highestSection, matching: find.text('三天打鱼')), findsOneWidget);
 
-        // 单项目成就 card + locked '?' badges.
+        // 单项目成就 card + locked '?' badges + catalog button.
         final singleSection = find.byKey(const ValueKey('achievement_section_singleProject'));
         await tester.scrollUntilVisible(
           singleSection,
@@ -353,8 +353,15 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(find.descendant(of: singleSection, matching: find.text('单项目成就')), findsOneWidget);
-        expect(find.descendant(of: singleSection, matching: find.text('12')), findsOneWidget);
+        expect(
+          find.descendant(
+            of: singleSection,
+            matching: find.text('3/${kSingleProjectMilestones.length}'),
+          ),
+          findsOneWidget,
+        );
         expect(find.descendant(of: singleSection, matching: find.text('?')), findsWidgets);
+        expect(find.byKey(const ValueKey('single_project_view_all_button')), findsOneWidget);
 
         // 连续成就 card.
         final streakSection = find.byKey(const ValueKey('achievement_section_streak'));
@@ -667,5 +674,48 @@ void main() {
 
       await disposeWidgetTree(tester);
     });
+
+    testWidgets(
+      'opens 单项目成就图鉴 sheet, filters by stage, and searches 325 meme achievement',
+      (tester) async {
+        tester.view.physicalSize = const Size(412, 915);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+
+        await tester.runAsync(seedThreeHabitsThreeDayStreakEndedYesterday);
+
+        await tester.pumpWidget(buildApp());
+        await tester.pumpAndSettle();
+
+        final viewAllBtn = find.byKey(const ValueKey('single_project_view_all_button'));
+        await tester.scrollUntilVisible(
+          viewAllBtn,
+          250,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(viewAllBtn);
+        await tester.pumpAndSettle();
+
+        expect(find.text('单项目成就图鉴'), findsOneWidget);
+        expect(find.text('已解锁 3 / ${kSingleProjectMilestones.length}'), findsOneWidget);
+
+        // Filter to 301-365天 stage.
+        final stage301 = find.byKey(const ValueKey('catalog_stage_301_365'));
+        await tester.ensureVisible(stage301);
+        await tester.pumpAndSettle();
+        await tester.tap(stage301);
+        await tester.pumpAndSettle();
+        expect(find.text('301 永久重定向'), findsOneWidget);
+
+        // Search for 325 meme milestone.
+        await tester.enterText(find.byKey(const ValueKey('single_catalog_search_input')), '325');
+        await tester.pumpAndSettle();
+        expect(find.text('仙术杯 325'), findsOneWidget);
+        expect(find.textContaining('明日方舟'), findsOneWidget);
+
+        await disposeWidgetTree(tester);
+      },
+    );
   });
 }

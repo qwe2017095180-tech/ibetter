@@ -130,7 +130,7 @@ class _AchievementUnlockDialogState extends State<_AchievementUnlockDialog> {
           : LayoutBuilder(
               builder: (context, constraints) {
                 final pageHeight =
-                    (constraints.maxHeight - 44).clamp(360.0, 480.0);
+                    (constraints.maxHeight - 44).clamp(360.0, 530.0);
                 return Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -263,6 +263,30 @@ class _AchievementUnlockCardColumn extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.85),
                     ),
                   ),
+                  if (item.displayLore != null &&
+                      item.displayLore!.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        item.displayLore!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          height: 1.45,
+                          color: Colors.white.withValues(alpha: 0.95),
+                        ),
+                      ),
+                    ),
+                  ],
                   Divider(
                     height: 28,
                     thickness: 1,

@@ -19,6 +19,7 @@ import 'widgets/achievement_list_sheet.dart';
 import 'widgets/achievement_unlock_dialog.dart';
 import 'widgets/achievement_utils.dart';
 import 'widgets/report_card_sheet.dart';
+import 'widgets/single_project_catalog_sheet.dart';
 import 'widgets/weekly_chart.dart';
 
 /// "我的成就" tab displaying KPI summary, yearly progress, recent heatmap,
@@ -179,6 +180,9 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
       if (stats.highestStreakAchievement != null) stats.highestStreakAchievement!,
     ];
 
+    final unlockedSingleCount = singleList.where((a) => a.unlocked).length;
+    final previewSingle = _previewSingleMilestones(singleList);
+
     void handleTap(AchievementItem item) =>
         _openAchievementDetail(context, item, habits: habits, checkIns: checkIns);
 
@@ -217,10 +221,18 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
           key: const ValueKey('achievement_section_singleProject'),
           sectionKey: 'singleProject',
           title: '单项目成就',
-          trailingCount: '${singleList.length}',
-          items: singleList,
+          trailingCount: '$unlockedSingleCount/${singleList.length}',
+          items: previewSingle,
           today: today,
           onTapItem: handleTap,
+          footerKey: const ValueKey('single_project_view_all_button'),
+          footerLabel: '查看全部 ${singleList.length} 项单项目成就',
+          onTapFooter: () => showSingleProjectCatalogSheet(
+            context,
+            items: singleList,
+            today: today,
+            onTapItem: handleTap,
+          ),
         ),
         _AchievementSectionCard(
           key: const ValueKey('achievement_section_streak'),
@@ -260,6 +272,23 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
         ),
       ],
     );
+  }
+  List<AchievementItem> _previewSingleMilestones(List<AchievementItem> items) {
+    final unlocked = [for (final item in items) if (item.unlocked) item];
+    final locked = [for (final item in items) if (!item.unlocked) item];
+    if (unlocked.isEmpty) {
+      return locked.take(6).toList();
+    }
+    if (locked.isEmpty) {
+      return unlocked.length <= 6
+          ? unlocked
+          : unlocked.sublist(unlocked.length - 6);
+    }
+    final recentUnlocked = unlocked.length <= 3
+        ? unlocked
+        : unlocked.sublist(unlocked.length - 3);
+    final upcomingLocked = locked.take(3).toList();
+    return [...recentUnlocked, ...upcomingLocked];
   }
 }
 
@@ -754,6 +783,9 @@ class _AchievementSectionCard extends StatelessWidget {
     required this.items,
     required this.today,
     required this.onTapItem,
+    this.footerKey,
+    this.footerLabel,
+    this.onTapFooter,
   });
 
   final String sectionKey;
@@ -762,6 +794,9 @@ class _AchievementSectionCard extends StatelessWidget {
   final List<AchievementItem> items;
   final DateTime today;
   final ValueChanged<AchievementItem> onTapItem;
+  final Key? footerKey;
+  final String? footerLabel;
+  final VoidCallback? onTapFooter;
 
   @override
   Widget build(BuildContext context) {
@@ -813,6 +848,44 @@ class _AchievementSectionCard extends StatelessWidget {
               ),
             ),
           ],
+          if (onTapFooter != null && footerLabel != null) ...[
+            const Divider(
+              height: 1,
+              thickness: 0.8,
+              indent: 16,
+              endIndent: 16,
+              color: AppColors.divider,
+            ),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                key: footerKey,
+                onTap: onTapFooter,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        footerLabel!,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      const Icon(
+                        Icons.chevron_right,
+                        size: 18,
+                        color: AppColors.primary,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -836,6 +909,7 @@ class _AchievementRowContent extends StatelessWidget {
     final metaText = dateLabel.isNotEmpty
         ? '获得${item.count}次  |  $dateLabel'
         : '获得${item.count}次';
+    final lore = item.displayLore;
 
     return Row(
       children: [
@@ -862,6 +936,18 @@ class _AchievementRowContent extends StatelessWidget {
                   color: AppColors.textSecondary,
                 ),
               ),
+              if (lore != null && lore.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  lore,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
               const SizedBox(height: 4),
               Text(
                 metaText,

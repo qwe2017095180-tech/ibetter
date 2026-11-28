@@ -1,8 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ibetter/domain/date_key.dart' as dk;
 import 'package:ibetter/domain/models/check_in.dart';
 import 'package:ibetter/domain/models/habit.dart';
 import 'package:ibetter/domain/services/achievement_service.dart';
 import 'package:ibetter/domain/services/history_service.dart';
+import 'package:ibetter/features/icon_picker/icon_catalog.g.dart';
 
 Habit _habit(int id, String name, {DateTime? start, int? goalDays, bool active = true}) => Habit(
       id: id,
@@ -132,5 +134,109 @@ void main() {
     expect(months.first.days.map((d) => d.dateKey), ['2026-11-26', '2026-11-24']);
     expect(months.first.days[1].entries.map((e) => e.timeLabel), ['19:22', '10:05']);
     expect(months.last.days.single.entries.single.timeLabel, '08:09');
+  });
+
+  group('single-project 365-day milestone catalog', () {
+    test('satisfies density, uniqueness, icon, legacy compatibility, and meme invariants', () {
+      expect(kSingleProjectMilestones.length, 274);
+      expect(kSingleProjectMilestones.first.days, 1);
+      expect(kSingleProjectMilestones.last.days, 365);
+
+      final seenDays = <int>{};
+      final seenIds = <String>{};
+      final seenTitles = <String>{};
+
+      for (var i = 0; i < kSingleProjectMilestones.length; i++) {
+        final m = kSingleProjectMilestones[i];
+        expect(seenDays.add(m.days), isTrue, reason: 'duplicate days ${m.days}');
+        expect(seenIds.add(m.id), isTrue, reason: 'duplicate id ${m.id}');
+        expect(seenTitles.add(m.title), isTrue, reason: 'duplicate title ${m.title}');
+        expect(m.lore.trim(), isNotEmpty, reason: 'empty lore on day ${m.days}');
+        expect(
+          iconCatalogKeys.contains(m.iconKey),
+          isTrue,
+          reason: 'invalid iconKey ${m.iconKey} on day ${m.days}',
+        );
+
+        if (i > 0) {
+          final prev = kSingleProjectMilestones[i - 1];
+          expect(m.days, greaterThan(prev.days));
+          final gap = m.days - prev.days;
+          expect(gap, lessThanOrEqualTo(2), reason: 'gap > 2 between ${prev.days} and ${m.days}');
+          if (m.days <= 100 || prev.days >= 355) {
+            expect(gap, 1, reason: 'expected daily milestone between ${prev.days} and ${m.days}');
+          }
+        }
+      }
+
+      final byDay = {for (final m in kSingleProjectMilestones) m.days: m};
+
+      // Backward compatibility for original 12 milestones.
+      const legacy = <int, String>{
+        1: '一日幸运',
+        2: '不二法门',
+        3: '三生万物',
+        5: '五福临门',
+        7: '七星高照',
+        10: '十全十美',
+        15: '半月之约',
+        21: '廿一成习',
+        30: '满月达成',
+        50: '五十知天命',
+        100: '百炼成钢',
+        365: '一周年纪念',
+      };
+      legacy.forEach((day, title) {
+        expect(byDay[day]?.id, 'single_$day');
+        expect(byDay[day]?.title, title);
+      });
+
+      // Requested allusion & internet-meme milestones.
+      expect(byDay[325]?.title, '仙术杯 325');
+      expect(byDay[325]?.lore, contains('明日方舟'));
+      expect(byDay[42]?.title, '宇宙终极答案');
+      expect(byDay[64]?.title, '一组方块');
+      expect(byDay[86]?.title, '秋名山 AE86');
+      expect(byDay[127]?.title, '本地回环 127');
+      expect(byDay[200]?.title, '200 OK');
+      expect(byDay[233]?.title, '23333 大笑');
+      expect(byDay[300]?.title, '斯巴达吃井线');
+      expect(byDay[314]?.title, '圆周率 π');
+      expect(byDay[318]?.title, '此生必驾 318');
+    });
+
+    test('unlocks 325 meme achievement on day 325 and 365 anniversary on day 365', () {
+      final start = DateTime(2025, 11, 29);
+      final h = _habit(1, '每日坚持', start: start);
+
+      final before325 = [
+        for (var i = 0; i < 324; i++)
+          _checkIn(1, dk.dateKey(dk.addDays(start, i))),
+      ];
+      final day325 = dk.addDays(start, 324);
+      final after325 = [...before325, _checkIn(1, dk.dateKey(day325))];
+
+      final unlockedOn325 = service.newlyUnlockedForCheckIn(
+        habit: h,
+        date: day325,
+        allHabits: [h],
+        allCheckInsBefore: before325,
+        allCheckInsAfter: after325,
+        today: day325,
+      );
+      final item325 = unlockedOn325.firstWhere((a) => a.id == 'single_325');
+      expect(item325.title, '仙术杯 325');
+      expect(item325.displayLore, contains('325'));
+
+      final all365 = [
+        for (var i = 0; i < 365; i++)
+          _checkIn(1, dk.dateKey(dk.addDays(start, i))),
+      ];
+      final day365 = dk.addDays(start, 364);
+      final stats365 = service.compute([h], all365, today: day365);
+      expect(stats365.highestSingleAchievement?.id, 'single_365');
+      expect(stats365.highestSingleAchievement?.title, '一周年纪念');
+      expect(stats365.byCategory(AchievementCategory.singleProject).every((a) => a.unlocked), isTrue);
+    });
   });
 }
