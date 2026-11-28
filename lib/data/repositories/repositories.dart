@@ -48,6 +48,9 @@ abstract class AgendaRepository {
   /// 某天可见（未隐藏）的日程，按 [AgendaItem.compareForDisplay] 排序。
   Stream<List<AgendaItem>> watchByDate(String date);
 
+  /// 全部可见（未隐藏）的日程，供全部日程看板展示。
+  Stream<List<AgendaItem>> watchAllVisible();
+
   /// 全部日程（含隐藏的），供同步合并使用。
   Future<List<AgendaItem>> getAll();
 

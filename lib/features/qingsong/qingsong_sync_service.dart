@@ -2,8 +2,10 @@
 library;
 
 import '../../data/repositories/repositories.dart';
+import '../../domain/models/qingsong_notice.dart';
 import '../../domain/services/agenda_sync_rules.dart';
 import 'qingsong_client.dart';
+import 'qingsong_notice_cache.dart';
 
 class SyncResult {
   const SyncResult({
@@ -13,6 +15,7 @@ class SyncResult {
     this.updated = 0,
     this.removed = 0,
     this.warnings = const [],
+    this.fetchedNotices = const [],
   });
 
   final int uploaded;
@@ -23,6 +26,9 @@ class SyncResult {
 
   /// 部分失败（不影响整体同步）的说明。
   final List<String> warnings;
+
+  /// Full list of notices returned by `/bridge/v1/notices` in this sync pass.
+  final List<QingsongNotice> fetchedNotices;
 
   String get summary {
     final parts = <String>[
@@ -37,10 +43,15 @@ class SyncResult {
 }
 
 class QingsongSyncService {
-  const QingsongSyncService({required this.api, required this.repository});
+  const QingsongSyncService({
+    required this.api,
+    required this.repository,
+    this.noticeCacheStore,
+  });
 
   final QingsongApi api;
   final AgendaRepository repository;
+  final QingsongNoticeCacheStore? noticeCacheStore;
 
   Future<SyncResult> sync() async {
     final warnings = <String>[];
@@ -90,6 +101,9 @@ class QingsongSyncService {
 
     // 3. 下行合并
     final notices = await api.fetchNotices();
+    if (noticeCacheStore != null) {
+      await noticeCacheStore!.save(notices);
+    }
     final plan = planRemoteMerge(await repository.getAll(), notices);
     await repository.applyMergePlan(plan);
 
@@ -100,6 +114,7 @@ class QingsongSyncService {
       updated: plan.updates.length,
       removed: plan.deletes.length,
       warnings: warnings,
+      fetchedNotices: notices,
     );
   }
 }

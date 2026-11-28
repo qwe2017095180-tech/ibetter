@@ -99,3 +99,13 @@ Flutter binary: `export PATH="$HOME/development/flutter/bin:$PATH"`
   - `MePage` 顶部封面壁纸与重叠圆形头像支持直接点击调起相册更换，并新增「自选壁纸 / 更换壁纸」胶囊按钮；`EditProfileSheet` 顶部展示壁纸实时预览与选图入口，大尺寸照片加载加设 `cacheWidth` 限制内存占用。
 - 应用内更新默认启用镜像源：`UpdateConfig.defaultMirrorPrefix` 改为 `https://gh-proxy.com/`，预设线路优先展示加速镜像并新增 `mirrorSchemaVersion: 2`（自动迁移旧版空镜像配置为 `gh-proxy.com`，同时保留用户显式选择的「直连 GitHub」）；失败时按所选镜像 → 其他加速镜像 → 直连 GitHub 自动回退，并在更新弹窗展示当前下载线路。
 - 新增 `nowProvider` 消除跨午夜测试时钟抖动（`23:00–03:00` / `04:00–07:00` 隐藏成就受现实时间影响），补充/更新音效、壁纸直选与默认镜像测试；`flutter analyze` 0 issues，`flutter test --timeout=30s` 127/127 全部通过。
+
+## 轻松打卡 1.5.0
+- 新增「轻松日程」全部日程看板页面（`lib/features/qingsong/qingsong_board_page.dart`、`lib/domain/services/qingsong_board_rules.dart`、`lib/features/qingsong/qingsong_notice_cache.dart`）：
+  - 顶部栏提供返回、同步状态说明（未配置/已配对数量/上次同步时间）、「立即同步」与「+ 添加」操作按钮；未配对电脑时展示提示横幅与「去配对」快捷跳转。
+  - 横向 10 项分类筛选栏（`全部` / `待办` / `作业` / `兼职` / `比赛` / `活动` / `志愿` / `通知` / `其他` / `归档` + 实时角标计数），支持水平滚动并保持筛选页签挂载。
+  - 响应式 1/2/3 列卡片网格布局：每张卡片展示分类徽标、`待办中` 标记、来源群聊、标题与摘要、截止时间格式化（如 `2027年1月2日`、`11月28日 12:00`）及紧急度倒计时胶囊（`还剩 X 天 X 小时` / `还剩 X 小时 X 分` / `已过期` / `无截止`）。
+  - 卡片支持「加入待办」「不参加 / 忽略」「✓ 完成」「移回通知」「↩ 恢复到列表」「删除」（仅本地）并附带 `SoundPool` 音效反馈，点击卡片可打开正文详情底部弹层。
+- 离线缓存与双向联动：`FileQingsongNoticeCacheStore` 持久化电脑端拉取的通知列表，通过 `mergeBoardItems` 与本地日程流（`DriftAgendaRepository.watchAllVisible()`）去重融合；`QingsongClient.setNoticeStatus` 将「待办 / 完成」状态实时推回电脑端 `/bridge/v1/notices/status`，对电脑端暂不支持的非待办/完成状态（HTTP 400）自动优雅降级保留在手机端。
+- 新增双入口与路由（`Routes.qingsongBoard` = `/qingsong-board`）：首页「今日日程」右上角「全部日程 ›」（`home_all_agenda_button`）直达；「更多 → 轻松日程同步」顶部新增「查看全部日程」（`more_qingsong_board_row`）。
+- 验证：`flutter analyze` 0 issues；`flutter test --timeout=30s` 134/134 全部通过。

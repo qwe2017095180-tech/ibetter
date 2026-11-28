@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../app/router.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../core/platform/native_bridge.dart';
 import '../../../core/prefs/app_prefs.dart';
@@ -201,34 +203,43 @@ class AgendaSection extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(18, 4, 16, 4),
           child: Row(
             children: [
-              Text(
-                heading,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        heading,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    if (items.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        pendingCount == 0 ? '已全部完成' : '待办 $pendingCount/${items.length}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: pendingCount == 0 ? AppColors.done : AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              if (items.isNotEmpty) ...[
-                const SizedBox(width: 8),
-                Text(
-                  pendingCount == 0 ? '已全部完成' : '待办 $pendingCount/${items.length}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: pendingCount == 0 ? AppColors.done : AppColors.textSecondary,
-                  ),
-                ),
-              ],
-              const Spacer(),
               if (config != null && config.isConfigured)
                 Padding(
-                  padding: const EdgeInsets.only(right: 6),
+                  padding: const EdgeInsets.only(right: 4),
                   child: InkWell(
                     key: const ValueKey('home_qingsong_sync_button'),
                     borderRadius: BorderRadius.circular(AppRadius.pill),
                     onTap: syncState.syncing ? null : () => _manualSync(context, ref),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
                       child: syncState.syncing
                           ? const SizedBox(
                               width: 15,
@@ -240,11 +251,33 @@ class AgendaSection extends ConsumerWidget {
                   ),
                 ),
               InkWell(
+                key: const ValueKey('home_all_agenda_button'),
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                onTap: () => context.push(Routes.qingsongBoard),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    boxShadow: const [BoxShadow(color: AppColors.cardShadow, offset: Offset(0, 2))],
+                  ),
+                  child: const Text(
+                    '全部日程 ›',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              InkWell(
                 key: const ValueKey('add_agenda_button'),
                 borderRadius: BorderRadius.circular(AppRadius.pill),
                 onTap: () => showAddAgendaSheet(context, initialDate: selectedDate),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -253,12 +286,12 @@ class AgendaSection extends ConsumerWidget {
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.edit_calendar_outlined, size: 15, color: AppColors.primary),
+                      Icon(Icons.edit_calendar_outlined, size: 14, color: AppColors.primary),
                       SizedBox(width: 4),
                       Text(
                         '添加日程',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 12.5,
                           fontWeight: FontWeight.w600,
                           color: AppColors.primary,
                         ),

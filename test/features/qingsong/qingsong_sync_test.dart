@@ -57,6 +57,15 @@ class _FakeQingsongApi implements QingsongApi {
       externalId: old.externalId,
     );
   }
+
+  @override
+  Future<QingsongNotice?> setNoticeStatus(String remoteId, String status) async {
+    final idx = remoteNotices.indexWhere((n) => n.id == remoteId);
+    if (idx < 0) throw const QingsongException('not found', statusCode: 404);
+    final updated = remoteNotices[idx].copyWith(status: status);
+    remoteNotices[idx] = updated;
+    return updated;
+  }
 }
 
 void main() {

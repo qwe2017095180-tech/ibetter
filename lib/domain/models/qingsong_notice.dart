@@ -15,6 +15,7 @@ class QingsongNotice {
     this.externalId,
     this.createdAt,
     this.updatedAt,
+    this.archivedAt,
   });
 
   final String id;
@@ -34,9 +35,59 @@ class QingsongNotice {
   final String? externalId;
   final int? createdAt;
   final int? updatedAt;
+  final int? archivedAt;
 
+  bool get isNew => status == 'new';
+  bool get isTodo => status == 'todo';
   bool get isDone => status == 'done';
   bool get isSkipped => status == 'skip';
+  bool get isArchived => status == 'done' || status == 'skip';
+  bool get isLocalOnly => id.startsWith('local:');
+
+  QingsongNotice copyWith({
+    String? title,
+    String? summary,
+    String? detail,
+    String? category,
+    String? deadline,
+    bool clearDeadline = false,
+    String? status,
+    String? group,
+    String? externalId,
+    int? createdAt,
+    int? updatedAt,
+    int? archivedAt,
+    bool clearArchivedAt = false,
+  }) =>
+      QingsongNotice(
+        id: id,
+        title: title ?? this.title,
+        summary: summary ?? this.summary,
+        detail: detail ?? this.detail,
+        category: category ?? this.category,
+        deadline: clearDeadline ? null : (deadline ?? this.deadline),
+        status: status ?? this.status,
+        group: group ?? this.group,
+        externalId: externalId ?? this.externalId,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+        archivedAt: clearArchivedAt ? null : (archivedAt ?? this.archivedAt),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'summary': summary,
+        'detail': detail,
+        'category': category,
+        'deadline': deadline,
+        'status': status,
+        'group': group,
+        'externalId': externalId,
+        'createdAt': createdAt,
+        'updatedAt': updatedAt,
+        'archivedAt': archivedAt,
+      };
 
   static QingsongNotice? tryParse(Object? json) {
     if (json is! Map) return null;
@@ -66,6 +117,7 @@ class QingsongNotice {
       externalId: externalId is String && externalId.isNotEmpty ? externalId : null,
       createdAt: integer('createdAt'),
       updatedAt: integer('updatedAt'),
+      archivedAt: integer('archivedAt'),
     );
   }
 }

@@ -16,6 +16,7 @@ import '../features/more/more_page.dart';
 import '../features/project_editor/project_editor_page.dart';
 import '../features/projects/project_detail_page.dart';
 import '../features/projects/projects_page.dart';
+import '../features/qingsong/qingsong_board_page.dart';
 import '../features/settings/passcode_page.dart';
 import '../features/settings/project_sort_page.dart';
 import '../features/settings/settings_page.dart';
@@ -41,6 +42,9 @@ abstract final class Routes {
   static const projectSort = '/settings/sort';
   static const widgetGuide = '/settings/widget-guide';
   static const passcode = '/settings/passcode';
+
+  /// Qingsong full schedule board page.
+  static const qingsongBoard = '/qingsong-board';
 
   /// Project detail / stats page.
   static String projectDetail(int id) => '/projects/$id';
@@ -100,6 +104,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: rootKey,
         path: Routes.passcode,
         builder: (_, _) => const PasscodePage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootKey,
+        path: Routes.qingsongBoard,
+        builder: (_, _) => const QingsongBoardPage(),
       ),
       GoRoute(
         parentNavigatorKey: rootKey,

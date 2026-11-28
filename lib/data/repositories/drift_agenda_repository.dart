@@ -50,6 +50,12 @@ class DriftAgendaRepository implements AgendaRepository {
           .map((rows) => rows.map(_agendaFromRow).toList()..sort(AgendaItem.compareForDisplay));
 
   @override
+  Stream<List<AgendaItem>> watchAllVisible() =>
+      (_db.select(_t)..where((t) => t.isHidden.equals(false)))
+          .watch()
+          .map((rows) => rows.map(_agendaFromRow).toList());
+
+  @override
   Future<List<AgendaItem>> getAll() async =>
       (await _db.select(_t).get()).map(_agendaFromRow).toList();
 

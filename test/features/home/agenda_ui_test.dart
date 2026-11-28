@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:ibetter/app/router.dart';
 import 'package:ibetter/app/theme/app_theme.dart';
 import 'package:ibetter/core/db/app_database.dart';
 import 'package:ibetter/core/providers.dart';
@@ -12,6 +13,7 @@ import 'package:ibetter/domain/models/qingsong_notice.dart';
 import 'package:ibetter/features/home/home_page.dart';
 import 'package:ibetter/features/qingsong/qingsong_client.dart';
 import 'package:ibetter/features/qingsong/qingsong_config.dart';
+import 'package:ibetter/features/qingsong/qingsong_notice_cache.dart';
 import 'package:ibetter/features/qingsong/qingsong_providers.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -38,6 +40,9 @@ class _StubQingsongApi implements QingsongApi {
   Future<void> setStatus(String remoteId, {required bool done}) async {
     statusPushed.add((id: remoteId, done: done));
   }
+
+  @override
+  Future<QingsongNotice?> setNoticeStatus(String remoteId, String status) async => null;
 }
 
 void main() {
@@ -61,13 +66,20 @@ void main() {
   }) {
     final router = GoRouter(
       initialLocation: '/',
-      routes: [GoRoute(path: '/', builder: (_, _) => const HomePage())],
+      routes: [
+        GoRoute(path: '/', builder: (_, _) => const HomePage()),
+        GoRoute(
+          path: Routes.qingsongBoard,
+          builder: (_, _) => const Scaffold(body: Text('BOARD_ROUTE')),
+        ),
+      ],
     );
     return ProviderScope(
       overrides: [
         databaseProvider.overrideWithValue(db),
         todayProvider.overrideWithValue(fixedToday),
         qingsongConfigStoreProvider.overrideWithValue(InMemoryQingsongConfigStore(config)),
+        qingsongNoticeCacheStoreProvider.overrideWithValue(MemoryQingsongNoticeCacheStore()),
         if (api != null) qingsongApiFactoryProvider.overrideWithValue((_, _) => api),
       ],
       child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
@@ -162,6 +174,11 @@ void main() {
     expect(stubApi.statusPushed, hasLength(1));
     expect(stubApi.statusPushed.single.id, 'qs-99');
     expect(stubApi.statusPushed.single.done, isTrue);
+
+    // Tapping "全部日程" opens the full board route.
+    await tester.tap(find.byKey(const ValueKey('home_all_agenda_button')));
+    await tester.pumpAndSettle();
+    expect(find.text('BOARD_ROUTE'), findsOneWidget);
 
     await disposeTree(tester);
   });

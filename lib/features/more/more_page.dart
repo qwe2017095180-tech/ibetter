@@ -314,6 +314,14 @@ class _MorePageState extends ConsumerState<MorePage> {
             child: Column(
               children: [
                 _MoreRow(
+                  key: const ValueKey('more_qingsong_board_row'),
+                  icon: Icons.event_note_outlined,
+                  title: '查看全部日程',
+                  subtitle: '按全部 / 待办 / 分类 / 归档浏览轻松日程',
+                  onTap: () => context.push(Routes.qingsongBoard),
+                ),
+                const Divider(height: 1, thickness: 1, color: AppColors.divider),
+                _MoreRow(
                   key: const ValueKey('more_qingsong_address_row'),
                   icon: Icons.computer_outlined,
                   title: '电脑地址',

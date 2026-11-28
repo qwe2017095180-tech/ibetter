@@ -11,6 +11,7 @@ import 'package:ibetter/domain/models/qingsong_notice.dart';
 import 'package:ibetter/features/more/more_page.dart';
 import 'package:ibetter/features/qingsong/qingsong_client.dart';
 import 'package:ibetter/features/qingsong/qingsong_config.dart';
+import 'package:ibetter/features/qingsong/qingsong_notice_cache.dart';
 import 'package:ibetter/features/qingsong/qingsong_providers.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -34,6 +35,9 @@ class _FakeApi implements QingsongApi {
 
   @override
   Future<void> setStatus(String remoteId, {required bool done}) async {}
+
+  @override
+  Future<QingsongNotice?> setNoticeStatus(String remoteId, String status) async => null;
 }
 
 void main() {
@@ -50,6 +54,7 @@ void main() {
         overrides: [
           databaseProvider.overrideWithValue(db),
           qingsongConfigStoreProvider.overrideWithValue(configStore),
+          qingsongNoticeCacheStoreProvider.overrideWithValue(MemoryQingsongNoticeCacheStore()),
           qingsongApiFactoryProvider.overrideWithValue((_, _) => _FakeApi()),
         ],
         child: MaterialApp(theme: AppTheme.light(), home: const MorePage()),
@@ -59,9 +64,11 @@ void main() {
 
     // Scroll to the 轻松日程 section.
     await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('more_qingsong_sync_row')),
+      find.byKey(const ValueKey('more_qingsong_address_row')),
       200,
     );
+    await tester.ensureVisible(find.byKey(const ValueKey('more_qingsong_address_row')));
+    await tester.pumpAndSettle();
 
     // Set address.
     await tester.tap(find.byKey(const ValueKey('more_qingsong_address_row')));
@@ -72,6 +79,8 @@ void main() {
     expect(find.text('192.168.1.9:7790'), findsOneWidget);
 
     // Set token.
+    await tester.ensureVisible(find.byKey(const ValueKey('more_qingsong_token_row')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('more_qingsong_token_row')));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const ValueKey('qingsong_token_input')), 'abcd2345');
@@ -80,11 +89,15 @@ void main() {
     expect(find.text('ABCD2345'), findsOneWidget);
 
     // Test connection.
+    await tester.ensureVisible(find.byKey(const ValueKey('more_qingsong_test_row')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('more_qingsong_test_row')));
     await tester.pumpAndSettle();
     expect(find.text('已连上轻松日程 v1.1.1'), findsOneWidget);
 
     // Sync now -> pulls notice into DB.
+    await tester.ensureVisible(find.byKey(const ValueKey('more_qingsong_sync_row')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('more_qingsong_sync_row')));
     await tester.pumpAndSettle();
     expect(find.textContaining('新增 1 条'), findsWidgets);

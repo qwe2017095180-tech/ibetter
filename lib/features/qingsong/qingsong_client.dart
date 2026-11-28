@@ -48,6 +48,9 @@ abstract class QingsongApi {
   /// 返回 clientId → 远端 id。
   Future<Map<String, String>> createItems(List<AgendaItem> items);
   Future<void> setStatus(String remoteId, {required bool done});
+
+  /// Updates remote notice status (`new` | `todo` | `done` | `skip`) and returns updated notice if any.
+  Future<QingsongNotice?> setNoticeStatus(String remoteId, String status);
 }
 
 class QingsongClient implements QingsongApi {
@@ -159,5 +162,11 @@ class QingsongClient implements QingsongApi {
   @override
   Future<void> setStatus(String remoteId, {required bool done}) async {
     await _request('POST', '/notices/status', {'id': remoteId, 'status': done ? 'done' : 'todo'});
+  }
+
+  @override
+  Future<QingsongNotice?> setNoticeStatus(String remoteId, String status) async {
+    final json = await _request('POST', '/notices/status', {'id': remoteId, 'status': status});
+    return QingsongNotice.tryParse(json['notice']);
   }
 }
